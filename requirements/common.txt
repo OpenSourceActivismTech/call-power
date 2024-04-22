@@ -1,5 +1,5 @@
 Babel==2.9.1
-Flask==1.1.1
+Flask==2.2.5
 Flask-Assets==0.12
 Flask-Babel==0.12.2
 Flask-Caching==1.6.0
