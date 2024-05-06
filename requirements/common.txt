@@ -22,7 +22,7 @@ SQLAlchemy-Utils==0.33.11
 WTForms==2.2.1
 WTForms-Alchemy==0.16.9
 WTForms-Components==0.10.4
-Werkzeug==0.16
+Werkzeug==3.0.3
 alembic==1.0.8
 blinker==1.4
 cachelib==0.9.0
