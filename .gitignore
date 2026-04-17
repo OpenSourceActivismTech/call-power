@@ -18,7 +18,7 @@ cover
 .coveralls.yml
 
 # Ignore new frontend build artifacts
-frontend/node_modules
+/frontend/node_modules
 
 # Ignore bento tool run paths (this line added by `bento init`)
 .bento/
