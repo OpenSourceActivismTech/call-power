@@ -41,12 +41,17 @@ class UnitedStatesData(DataAdapter):
         return key.split("-", 1) if "-" in key else (key, "")
 
     def target(self, data):
+        name = data.get("name")
+        if isinstance(name, dict):
+            full_name = name.get("official_full")
+        else:
+            full_name = name
         adapted = {
             "number": data.get("phone", ""),
             "title": data.get("title", ""),
             "uid": data.get("bioguide_id", ""),
             "location": "DC",
-            "name": data.get("name") or f"{data.get('nick_name') or data.get('first_name', '')} {data.get('last_name', '')}".strip(),
+            "name": full_name or f"{data.get('nick_name') or data.get('first_name', '')} {data.get('last_name', '')}".strip(),
             "district": f"{data.get('state', '')}-{data.get('district')}" if data.get("district") else data.get("state", ""),
         }
         return adapted
@@ -71,6 +76,9 @@ class UnitedStatesData(DataAdapter):
 
 class OpenStatesData(DataAdapter):
     def target(self, data):
+        if data.get("leg_id"):
+            return self.target_legacy(data)
+
         adapted = {"uid": data.get("id") or data.get("leg_id")}
         chamber = data.get("chamber")
         if isinstance(chamber, list):
@@ -94,7 +102,39 @@ class OpenStatesData(DataAdapter):
                 adapted["number"] = office_phones[0].get("value", "")
         return adapted
 
+    def target_legacy(self, data):
+        adapted = {"uid": data.get("leg_id", "")}
+        chamber = data.get("chamber")
+        if data.get("title"):
+            adapted["title"] = data.get("title")
+        elif chamber == "upper":
+            adapted["title"] = "Senator"
+        else:
+            adapted["title"] = "Representative"
+
+        adapted["name"] = (
+            data.get("full_name")
+            or data.get("name")
+            or f"{data.get('first_name', '')} {data.get('last_name', '')}".strip()
+        )
+
+        for office in data.get("offices", []):
+            if office.get("type") == "capitol":
+                adapted["number"] = office.get("phone", "")
+        if "number" not in adapted and data.get("offices"):
+            adapted["number"] = data["offices"][0].get("phone", "")
+
+        district = data.get("district", "")
+        try:
+            adapted["district"] = int(str(district)[3:])
+        except (TypeError, ValueError):
+            adapted["district"] = district
+        return adapted
+
     def offices(self, data):
+        if data.get("leg_id"):
+            return self.offices_legacy(data)
+
         offices_dict = defaultdict(dict)
         for contact in data.get("contactDetails", []):
             offices_dict[contact["note"]][contact["type"]] = contact["value"]
@@ -111,6 +151,17 @@ class OpenStatesData(DataAdapter):
                 "type": office.get("name", ""),
             })
         return results
+
+    def offices_legacy(self, data):
+        offices = []
+        for office in data.get("offices", []):
+            offices.append({
+                "name": office.get("name", ""),
+                "address": office.get("address", ""),
+                "number": office.get("phone", ""),
+                "type": office.get("type", ""),
+            })
+        return offices
 
 
 class GovernorAdapter(DataAdapter):

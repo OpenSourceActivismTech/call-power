@@ -1,6 +1,8 @@
+import hashlib
 import uuid
 from datetime import timedelta
 
+import phonenumbers
 from django.db import models
 from django.db.models import Count, Q
 from django.utils import timezone
@@ -157,6 +159,67 @@ class Target(models.Model):
     def __str__(self):
         return self.name
 
+    def full_name(self):
+        return f"{self.title} {self.name}".strip()
+
+    def phone_number(self):
+        if not self.number:
+            return None
+        try:
+            parsed = phonenumbers.parse(self.number, None)
+            return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+        except phonenumbers.NumberParseException:
+            return self.number
+
+    @classmethod
+    def get_or_create(cls, uid, prefix=None, update_offices=True, commit=True, cache=None):
+        from callpower.apps.political_data.data_cache import check_political_data_cache
+        from callpower.apps.political_data.cache import political_data_cache
+
+        resolved_cache = political_data_cache if cache is None else cache
+        key = f"{prefix}:{uid}" if prefix else uid
+        target = cls.objects.filter(key=key).order_by("-id").first()
+        created = False
+
+        data = check_political_data_cache(key, cache=resolved_cache)
+        offices = data.pop("offices", [])
+        data.pop("uid", None)
+
+        if not target:
+            target = cls(**data)
+            target.key = key
+            target.save()
+            created = True
+        elif data and target.key == data.get("key"):
+            for attr in ["location", "number"]:
+                new_value = data.get(attr)
+                if new_value and getattr(target, attr) != new_value:
+                    setattr(target, attr, new_value)
+                    created = True
+            if created and commit:
+                target.save(update_fields=["location", "number"])
+
+        if offices and update_offices:
+            existing_offices = {office.uid: office for office in target.offices.all()}
+            for office_data in offices:
+                office_uid = office_data.get("uid")
+                if office_uid in existing_offices:
+                    office = existing_offices[office_uid]
+                    updated_fields = []
+                    for attr in ["name", "type", "address", "number", "latlon"]:
+                        new_value = office_data.get(attr)
+                        if getattr(office, attr) != new_value:
+                            setattr(office, attr, new_value)
+                            updated_fields.append(attr)
+                    if updated_fields:
+                        office.save(update_fields=updated_fields)
+                        created = True
+                else:
+                    TargetOffice.objects.create(target=target, **office_data)
+                    created = True
+
+        return target, created
+
 
 class TargetOffice(models.Model):
     id = models.AutoField(primary_key=True)
@@ -178,6 +241,15 @@ class TargetOffice(models.Model):
     class Meta:
         db_table = "campaign_target_office"
         managed = False
+
+    def phone_number(self):
+        if not self.number:
+            return None
+        try:
+            parsed = phonenumbers.parse(self.number, None)
+            return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+        except phonenumbers.NumberParseException:
+            return self.number
 
 
 class AudioRecording(models.Model):
@@ -541,10 +613,58 @@ class Blocklist(models.Model):
         db_table = "admin_blocklist"
         managed = False
 
+    def save(self, *args, **kwargs):
+        if not self.timestamp:
+            self.timestamp = timezone.now()
+        return super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.phone_number or self.phone_hash or self.ip_address or ""
+
     def is_active(self):
         if self.expires and self.timestamp:
-            return timezone.now() <= (self.timestamp + self.expires)
+            timestamp = self.timestamp
+            if timezone.is_naive(timestamp):
+                timestamp = timezone.make_aware(timestamp, timezone.utc)
+            return timezone.now() <= (timestamp + self.expires)
         return True
+
+    def match(self, user_phone, user_ip, user_country="US"):
+        if self.ip_address:
+            return self.ip_address == user_ip
+        if self.phone_hash and user_phone:
+            return self.phone_hash == hashlib.sha256(user_phone.encode("ascii")).hexdigest()
+        if self.phone_number and user_phone:
+            try:
+                stored = phonenumbers.parse(self.phone_number, user_country)
+                normalized_stored = phonenumbers.format_number(stored, phonenumbers.PhoneNumberFormat.E164)
+                parsed = phonenumbers.parse(user_phone, user_country)
+                normalized = phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+            except phonenumbers.NumberParseException:
+                normalized_stored = self.phone_number
+                normalized = user_phone
+            return normalized_stored == normalized
+        return False
+
+    @classmethod
+    def active_blocks(cls):
+        return [block for block in cls.objects.all() if block.is_active()]
+
+    @classmethod
+    def user_blocked(cls, user_phone, user_ip, user_country="US"):
+        active_blocks = cls.active_blocks()
+        if not active_blocks:
+            return False
+
+        matched = False
+        for block in active_blocks:
+            if block.match(user_phone, user_ip, user_country):
+                if not block.phone_number and user_phone:
+                    block.phone_number = user_phone
+                block.hits = (block.hits or 0) + 1
+                block.save(update_fields=["phone_number", "hits"])
+                matched = True
+        return matched
 
 
 class ScheduledJob(models.Model):

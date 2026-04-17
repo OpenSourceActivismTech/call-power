@@ -20,13 +20,21 @@ class DataProvider:
         return self._cache.get(key, default)
 
     def cache_set(self, key, value):
-        self._cache.set(key, value)
+        if hasattr(self._cache, "set"):
+            self._cache.set(key, value)
+        else:
+            self._cache[key] = value
 
     def cache_set_many(self, mapping):
-        self._cache.set_many(mapping)
+        if hasattr(self._cache, "set_many"):
+            self._cache.set_many(mapping)
+        else:
+            self._cache.update(mapping)
 
     def cache_search(self, prefix):
-        return self._cache.search_prefix(prefix)
+        if hasattr(self._cache, "search_prefix"):
+            return self._cache.search_prefix(prefix)
+        return [value for key, value in self._cache.items() if key.startswith(prefix)]
 
 
 class CampaignType:

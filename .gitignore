@@ -17,6 +17,9 @@ instance/uploads
 cover
 .coveralls.yml
 
+# Ignore new frontend build artifacts
+frontend/node_modules
+
 # Ignore bento tool run paths (this line added by `bento init`)
 .bento/
 dump.rdb
