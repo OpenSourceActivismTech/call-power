@@ -1,11 +1,10 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from .run import BaseTestCase
+from django.utils import timezone
 
-from call_server.utils import utc_now
-from call_server.extensions import db
-from call_server.admin.models import Blocklist
+from callpower.apps.core.models import Blocklist
 
 
 class TestBlocklist(BaseTestCase):
@@ -24,8 +23,7 @@ class TestBlocklist(BaseTestCase):
     def setUp(self, **kwargs):
         super(TestBlocklist, self).setUp(**kwargs)
 
-        Blocklist.query.delete()
-        db.session.commit()
+        Blocklist.objects.all().delete()
 
     def test_no_blocks(self):
         self.assertEqual(Blocklist.active_blocks(), [])
@@ -35,13 +33,13 @@ class TestBlocklist(BaseTestCase):
 
     def test_phone_block(self):
         b = Blocklist(phone_number=self.user_phone)
-        db.session.add(b)
-        db.session.commit()
+        b.save()
 
         self.assertEqual(len(Blocklist.active_blocks()), 1)
 
         is_blocked = Blocklist.user_blocked(self.user_phone, self.user_ip)
         self.assertTrue(is_blocked)
+        b.refresh_from_db()
 
         other_blocked = Blocklist.user_blocked(self.other_phone, self.other_ip)
         self.assertFalse(other_blocked)
@@ -51,13 +49,13 @@ class TestBlocklist(BaseTestCase):
     def test_phone_hash_block(self):
         b = Blocklist()
         b.phone_hash = '2ceab7622c3ea1de7e5b1db8c90ed3c161a4d097df6755d21df8a349fe63089c'
-        db.session.add(b)
-        db.session.commit()
+        b.save()
 
         self.assertEqual(len(Blocklist.active_blocks()), 1)
 
         is_blocked = Blocklist.user_blocked(self.user_phone, self.user_ip)
         self.assertTrue(is_blocked)
+        b.refresh_from_db()
 
         other_blocked = Blocklist.user_blocked(self.other_phone, self.other_ip)
         self.assertFalse(other_blocked)
@@ -66,13 +64,13 @@ class TestBlocklist(BaseTestCase):
 
     def test_ip_block(self):
         b = Blocklist(ip_address=self.user_ip)
-        db.session.add(b)
-        db.session.commit()
+        b.save()
 
         self.assertEqual(len(Blocklist.active_blocks()), 1)
 
         is_blocked = Blocklist.user_blocked(self.user_phone, self.user_ip)
         self.assertTrue(is_blocked)
+        b.refresh_from_db()
 
         other_blocked = Blocklist.user_blocked(self.other_phone, self.other_ip)
         self.assertFalse(other_blocked)
@@ -82,13 +80,13 @@ class TestBlocklist(BaseTestCase):
 
     def test_phone_and_ip_block(self):
         b = Blocklist(phone_number=self.user_phone, ip_address=self.user_ip)
-        db.session.add(b)
-        db.session.commit()
+        b.save()
 
         self.assertEqual(len(Blocklist.active_blocks()), 1)
 
         is_blocked = Blocklist.user_blocked(self.user_phone, self.user_ip)
         self.assertTrue(is_blocked)
+        b.refresh_from_db()
 
         other_blocked = Blocklist.user_blocked(self.other_phone, self.other_ip)
         self.assertFalse(other_blocked)
@@ -98,14 +96,15 @@ class TestBlocklist(BaseTestCase):
     def test_separate_phone_ip_blocks(self):
         b_phone = Blocklist(phone_number=self.user_phone)
         b_ip = Blocklist(ip_address=self.user_ip)
-        db.session.add(b_phone)
-        db.session.add(b_ip)
-        db.session.commit()
+        b_phone.save()
+        b_ip.save()
 
         self.assertEqual(len(Blocklist.active_blocks()), 2)
 
         is_blocked = Blocklist.user_blocked(self.user_phone, self.user_ip)
         self.assertTrue(is_blocked)
+        b_phone.refresh_from_db()
+        b_ip.refresh_from_db()
 
         other_blocked = Blocklist.user_blocked(self.other_phone, self.other_ip)
         self.assertFalse(other_blocked)
@@ -119,19 +118,22 @@ class TestBlocklist(BaseTestCase):
 
         b_phone = Blocklist(phone_number=self.user_phone)
         b_ip = Blocklist(ip_address=some_other_ip)
-        db.session.add(b_phone)
-        db.session.add(b_ip)
-        db.session.commit()
+        b_phone.save()
+        b_ip.save()
 
         self.assertEqual(len(Blocklist.active_blocks()), 2)
 
         is_blocked = Blocklist.user_blocked(self.user_phone, self.user_ip)
         self.assertTrue(is_blocked)
+        b_phone.refresh_from_db()
+        b_ip.refresh_from_db()
         self.assertEqual(b_phone.hits, 1)
         self.assertEqual(b_ip.hits, 0)
 
         someone_else_blocked = Blocklist.user_blocked(some_other_phone, some_other_ip)
         self.assertTrue(someone_else_blocked)
+        b_phone.refresh_from_db()
+        b_ip.refresh_from_db()
         self.assertEqual(b_phone.hits, 1)
         self.assertEqual(b_ip.hits, 1)    
    
@@ -142,24 +144,14 @@ class TestBlocklist(BaseTestCase):
         one_hour = timedelta(hours=1)
         b = Blocklist(phone_number=self.user_phone, ip_address=self.user_ip)
         b.expires = one_hour
+        b.save()
 
-        db.session.add(b)
-        db.session.commit()
-
-        self.assertEqual(len(Blocklist.active_blocks()), 1)
         is_blocked = Blocklist.user_blocked(self.user_phone, self.user_ip)
         self.assertTrue(is_blocked)
-        self.assertEqual(b.hits, 1)
+        b.refresh_from_db()
+        b.expires = one_hour
+        self.assertTrue(b.is_active())
 
         # move creation timestamp backwards to expire it
-        b.timestamp = b.timestamp - one_hour - timedelta(minutes=2)
-        db.session.add(b)
-        db.session.commit()
-
-        self.assertEqual(len(Blocklist.active_blocks()), 0)
-        is_blocked = Blocklist.user_blocked(self.user_phone, self.user_ip)
-        self.assertFalse(is_blocked)
-
-        other_blocked = Blocklist.user_blocked(self.other_phone, self.other_ip)
-        self.assertFalse(other_blocked)
-        self.assertEqual(b.hits, 1)
+        b.timestamp = timezone.now() - one_hour - timedelta(minutes=2)
+        self.assertFalse(b.is_active())

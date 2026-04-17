@@ -3,6 +3,20 @@ Call Power
 
 Connecting people to power through their phones.
 
+Migration status
+----------------
+
+This repository now contains a side-by-side Django + React migration in addition
+to the legacy Flask + Backbone application.
+
+- Legacy app: `call_server/`
+- New Django app: `django_app/`
+- New React admin UI: `frontend/`
+
+The new stack currently ports the admin shell foundation, dashboard summary API,
+campaign editing APIs, a Django political-data layer, and an initial Twilio
+call-flow foundation while reusing the existing database tables.
+
 The admin interface lets activists:
 
 * Create and edit campaigns
@@ -51,6 +65,8 @@ Installation Instructions
 This application should be easy to host on Heroku, with Docker, or directly on any WSGI-compatible server. Requires Python, flask, a SQL database (we recommend Postgres, but Mysql should work), Redis or Memcache, and an SMTP server.
 
 Read detailed instrustions at [INSTALLATION.md](INSTALLATION.md)
+
+For the Django + React migration, see [django_app/README.md](django_app/README.md).
 
 Testing
 -------

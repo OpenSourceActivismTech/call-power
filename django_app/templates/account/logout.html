@@ -1,0 +1,13 @@
+{% extends "account/base.html" %}
+{% block title %}Log out | {{ sitename }}{% endblock %}
+{% block content %}
+  <section class="panel" style="max-width: 38rem;">
+    <div class="eyebrow">Session</div>
+    <h2>Log out</h2>
+    <p class="muted">This ends your Django session for the migrated admin and account pages.</p>
+    <form method="post">
+      {% csrf_token %}
+      <button type="submit">Log out</button>
+    </form>
+  </section>
+{% endblock %}

@@ -1,0 +1,109 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ campaign.name }} | Call Power</title>
+    <link rel="stylesheet" href="{% static 'embed/overlay.css' %}" />
+    <style>
+      :root {
+        color: #152033;
+        background:
+          radial-gradient(circle at top left, rgba(242, 180, 58, 0.24), transparent 28%),
+          linear-gradient(145deg, #f4efe6 0%, #d7e6f2 100%);
+        font-family: "Avenir Next", "Segoe UI", sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; padding: 28px 16px 56px; }
+      .page { max-width: 720px; margin: 0 auto; }
+      .hero {
+        background: rgba(255,255,255,0.92);
+        border: 1px solid rgba(21,32,51,0.08);
+        border-radius: 28px;
+        box-shadow: 0 24px 60px rgba(21,32,51,0.12);
+        padding: 28px;
+      }
+      .eyebrow {
+        margin: 0;
+        color: #8a4b08;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      h1 {
+        margin: 10px 0 12px;
+        font: 700 2.3rem/1.05 Georgia, serif;
+        letter-spacing: -0.03em;
+      }
+      p { color: #41506a; }
+      form {
+        display: grid;
+        gap: 16px;
+        margin-top: 24px;
+      }
+      label { display: grid; gap: 6px; font-weight: 600; color: #22324a; }
+      input {
+        width: 100%;
+        border: 1px solid rgba(21,32,51,0.1);
+        border-radius: 16px;
+        padding: 14px 16px;
+        font: inherit;
+        background: rgba(255,255,255,0.95);
+        box-shadow: 0 14px 34px rgba(21,32,51,0.08);
+      }
+      button {
+        border: 0;
+        border-radius: 999px;
+        padding: 14px 18px;
+        background: #152033;
+        color: #fffaf0;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      #script_mount { margin-top: 18px; }
+      @media (max-width: 640px) {
+        h1 { font-size: 1.9rem; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <section class="hero">
+        <p class="eyebrow">Public Campaign</p>
+        <h1>{{ campaign.name }}</h1>
+        <p>Enter your phone number and we’ll connect you to the right call flow for this campaign.</p>
+
+        <form id="call_form">
+          <label>
+            Phone
+            <input type="tel" id="phone_id" name="phone" autocomplete="tel" />
+          </label>
+
+          {% if campaign.segment_by == 'location' %}
+          <label>
+            {% if campaign.locate_by == 'district' %}District{% else %}Zip code{% endif %}
+            <input type="text" id="location_id" name="location" autocomplete="postal-code" />
+          </label>
+          {% endif %}
+
+          <button type="submit">Call Now</button>
+        </form>
+
+        <div id="script_mount"></div>
+      </section>
+    </div>
+
+    <script type="text/javascript">
+      window.CallPowerOptions = {
+        form: "#call_form",
+        phoneField: "#phone_id",
+        {% if campaign.segment_by == 'location' %}locationField: "#location_id",{% endif %}
+        scriptDisplay: "replace"
+      };
+    </script>
+    <script type="text/javascript" src="{{ base_url }}{% url 'campaign-embed-js' campaign.id %}"></script>
+  </body>
+</html>
