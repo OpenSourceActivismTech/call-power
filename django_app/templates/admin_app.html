@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Call Power Admin</title>
+    {% if debug %}
+    <script type="module" src="{{ react_dev_server_url }}/@vite/client"></script>
+    <script type="module" src="{{ react_dev_server_url }}/src/main.jsx"></script>
+    {% else %}
+    <link rel="stylesheet" href="/static/admin/assets/index.css" />
+    {% endif %}
+  </head>
+  <body>
+    <div id="root"></div>
+    {% if not debug %}
+    <script type="module" src="/static/admin/index.js"></script>
+    {% endif %}
+  </body>
+  </html>
