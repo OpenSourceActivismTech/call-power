@@ -1,23 +1,36 @@
+import os
+import json
+
 from django.conf import settings
+from django.core.files.storage import default_storage
+from django.test import RequestFactory
 from django.db import transaction
 from django.db.models import Count, Q
 from django.shortcuts import render
 from django.utils import timezone
 from django.views.generic import TemplateView
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework import status
+from rest_framework.exceptions import NotAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 
 from callpower.apps.api.serializers import (
+    CampaignAudioRecordingSerializer,
     CampaignDetailSerializer,
     CampaignSummarySerializer,
     TargetSerializer,
     TwilioPhoneNumberSerializer,
 )
+from callpower.apps.calls.views import create as create_call_view
 from callpower.apps.core.models import (
+    AudioRecording,
     Blocklist,
     Call,
     Campaign,
+    CampaignAudioRecording,
     CampaignPhoneNumber,
     CampaignTarget,
     LegacyUser,
@@ -41,7 +54,15 @@ class AdminAppView(TemplateView):
         )
 
 
-class DashboardSummaryApi(APIView):
+@method_decorator(csrf_exempt, name="dispatch")
+class AuthenticatedAPIView(APIView):
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        if not request.user.is_authenticated or not request.session.get("legacy_user_id"):
+            raise NotAuthenticated("Authentication required")
+
+
+class DashboardSummaryApi(AuthenticatedAPIView):
     def get(self, request):
         now = timezone.now()
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -59,7 +80,7 @@ class DashboardSummaryApi(APIView):
         return Response(payload)
 
 
-class CampaignListApi(APIView):
+class CampaignListApi(AuthenticatedAPIView):
     def get(self, request):
         queryset = Campaign.with_dashboard_counts()
 
@@ -94,7 +115,7 @@ class CampaignListApi(APIView):
         )
 
 
-class CampaignDetailApi(APIView):
+class CampaignDetailApi(AuthenticatedAPIView):
     def get_object(self, campaign_id):
         return Campaign.objects.get(pk=campaign_id)
 
@@ -114,7 +135,7 @@ class CampaignDetailApi(APIView):
         return Response(CampaignDetailSerializer(campaign).data)
 
 
-class CampaignCopyApi(APIView):
+class CampaignCopyApi(AuthenticatedAPIView):
     @transaction.atomic
     def post(self, request, campaign_id):
         source = Campaign.objects.get(pk=campaign_id)
@@ -158,7 +179,7 @@ class CampaignCopyApi(APIView):
         )
 
 
-class PhoneNumberListApi(APIView):
+class PhoneNumberListApi(AuthenticatedAPIView):
     def get(self, request):
         queryset = TwilioPhoneNumber.objects.order_by("id")
         return Response(
@@ -169,7 +190,7 @@ class PhoneNumberListApi(APIView):
         )
 
 
-class TargetListApi(APIView):
+class TargetListApi(AuthenticatedAPIView):
     def get(self, request):
         queryset = Target.objects.order_by("name", "id")
         search = request.query_params.get("q")
@@ -187,3 +208,231 @@ class TargetListApi(APIView):
                 "results": TargetSerializer(queryset, many=True).data,
             }
         )
+
+
+class CampaignAudioListApi(AuthenticatedAPIView):
+    def get(self, request, campaign_id):
+        campaign = Campaign.objects.get(pk=campaign_id)
+        queryset = (
+            AudioRecording.objects.filter(campaign_audio_recordings__campaign=campaign)
+            .distinct()
+            .order_by("key", "-version", "-id")
+        )
+        key = request.query_params.get("key")
+        if key:
+            queryset = queryset.filter(key=key)
+        return Response(
+            {
+                "count": queryset.count(),
+                "results": CampaignAudioRecordingSerializer(
+                    queryset,
+                    many=True,
+                    context={"campaign": campaign},
+                ).data,
+            }
+        )
+
+
+class CampaignAudioUploadApi(AuthenticatedAPIView):
+    parser_classes = [MultiPartParser, FormParser]
+
+    def _validate_upload(self, uploaded_file):
+        if not uploaded_file:
+            return None
+
+        allowed_content_types = {
+            "audio/wav",
+            "audio/x-wav",
+            "audio/mpeg",
+            "audio/mp3",
+        }
+        extension = os.path.splitext(uploaded_file.name)[1].lower()
+        if uploaded_file.content_type not in allowed_content_types and extension not in {".wav", ".mp3"}:
+            raise ValueError(f"File type must be mp3 or wav, got {uploaded_file.content_type or extension}.")
+        return extension.lstrip(".") or "mp3"
+
+    @transaction.atomic
+    def post(self, request, campaign_id):
+        campaign = Campaign.objects.get(pk=campaign_id)
+        message_key = (request.data.get("key") or "").strip()
+        description = (request.data.get("description") or "").strip()
+        text_to_speech = (request.data.get("text_to_speech") or "").strip()
+        uploaded_file = request.FILES.get("file_storage")
+
+        if not message_key:
+            return Response({"success": False, "errors": {"key": ["This field is required."]}}, status=400)
+        if not uploaded_file and not text_to_speech:
+            return Response(
+                {"success": False, "errors": {"file_storage": ["Upload a file or provide text_to_speech."]}},
+                status=400,
+            )
+
+        try:
+            extension = self._validate_upload(uploaded_file)
+        except ValueError as exc:
+            return Response({"success": False, "errors": {"file_storage": [str(exc)]}}, status=400)
+
+        last_version = (
+            AudioRecording.objects.filter(key=message_key).order_by("-version").values_list("version", flat=True).first()
+        )
+        version = int(last_version or 0) + 1
+
+        stored_name = ""
+        if uploaded_file:
+            stored_name = default_storage.save(
+                f"audio/campaign_{campaign.id}_{message_key}_{version}.{extension}",
+                uploaded_file,
+            )
+
+        recording = AudioRecording.objects.create(
+            key=message_key,
+            file_storage=stored_name or "",
+            text_to_speech="" if uploaded_file else text_to_speech,
+            version=version,
+            description=description,
+            hidden=False,
+        )
+
+        CampaignAudioRecording.objects.filter(
+            campaign=campaign,
+            recording__key=message_key,
+        ).update(selected=False)
+
+        CampaignAudioRecording.objects.update_or_create(
+            campaign=campaign,
+            recording=recording,
+            defaults={"selected": True},
+        )
+
+        return Response(
+            {
+                "success": True,
+                "message": "Audio recording uploaded",
+                "key": message_key,
+                "version": version,
+                "recording": CampaignAudioRecordingSerializer(
+                    recording,
+                    context={"campaign": campaign},
+                ).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class CampaignAudioSelectApi(AuthenticatedAPIView):
+    @transaction.atomic
+    def post(self, request, campaign_id, recording_id):
+        campaign = Campaign.objects.get(pk=campaign_id)
+        recording = AudioRecording.objects.get(pk=recording_id)
+
+        CampaignAudioRecording.objects.filter(
+            campaign=campaign,
+            recording__key=recording.key,
+        ).update(selected=False)
+
+        CampaignAudioRecording.objects.update_or_create(
+            campaign=campaign,
+            recording=recording,
+            defaults={"selected": True},
+        )
+
+        return Response(
+            {
+                "success": True,
+                "message": "Audio recording selected",
+                "key": recording.key,
+                "version": recording.version,
+                "recording": CampaignAudioRecordingSerializer(
+                    recording,
+                    context={"campaign": campaign},
+                ).data,
+            }
+        )
+
+
+class CampaignAudioHideApi(AuthenticatedAPIView):
+    @transaction.atomic
+    def post(self, request, campaign_id, recording_id):
+        campaign = Campaign.objects.get(pk=campaign_id)
+        recording = AudioRecording.objects.get(pk=recording_id)
+        recording.hidden = True
+        recording.save(update_fields=["hidden"])
+        CampaignAudioRecording.objects.filter(campaign=campaign, recording=recording).update(selected=False)
+        return Response(
+            {
+                "success": True,
+                "message": "Audio recording hidden",
+                "key": recording.key,
+                "version": recording.version,
+                "recording": CampaignAudioRecordingSerializer(
+                    recording,
+                    context={"campaign": campaign},
+                ).data,
+            }
+        )
+
+
+class CampaignAudioShowApi(AuthenticatedAPIView):
+    def post(self, request, campaign_id, recording_id):
+        campaign = Campaign.objects.get(pk=campaign_id)
+        recording = AudioRecording.objects.get(pk=recording_id)
+        recording.hidden = False
+        recording.save(update_fields=["hidden"])
+        return Response(
+            {
+                "success": True,
+                "message": "Audio recording visible",
+                "key": recording.key,
+                "version": recording.version,
+                "recording": CampaignAudioRecordingSerializer(
+                    recording,
+                    context={"campaign": campaign},
+                ).data,
+            }
+        )
+
+
+class CampaignLaunchApi(AuthenticatedAPIView):
+    def post(self, request, campaign_id):
+        campaign = Campaign.objects.get(pk=campaign_id)
+        campaign.status_code = 2
+        campaign.save(update_fields=["status_code"])
+        return Response(
+            {
+                "success": True,
+                "message": "Campaign launched",
+                "campaign": CampaignDetailSerializer(campaign).data,
+            }
+        )
+
+
+class CampaignTestCallApi(AuthenticatedAPIView):
+    def post(self, request, campaign_id):
+        campaign = Campaign.objects.get(pk=campaign_id)
+        payload = request.data
+        phone = (payload.get("userPhone") or "").strip()
+        location = (payload.get("userLocation") or "").strip()
+        country = (payload.get("userCountry") or campaign.country_code or "US").strip()
+        record = payload.get("record")
+
+        if not phone:
+            return Response(
+                {"success": False, "error": "userPhone is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        factory = RequestFactory()
+        internal_request = factory.post(
+            "/call/create",
+            data={
+                "campaignId": str(campaign.id),
+                "userPhone": phone,
+                "userLocation": location,
+                "userCountry": country,
+                "record": record or "",
+            },
+        )
+        internal_request.META["REMOTE_ADDR"] = request.META.get("REMOTE_ADDR", "127.0.0.1")
+        response = create_call_view(internal_request)
+        payload = json.loads(response.content.decode("utf-8"))
+        return Response(payload, status=response.status_code)

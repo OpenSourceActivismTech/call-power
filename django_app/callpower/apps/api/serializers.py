@@ -2,9 +2,12 @@ from django.db import transaction
 from rest_framework import serializers
 
 from callpower.apps.core.models import (
+    AudioRecording,
     Campaign,
+    CampaignAudioRecording,
     CampaignPhoneNumber,
     CampaignTarget,
+    ScheduleCall,
     SyncCampaign,
     Target,
     TwilioPhoneNumber,
@@ -42,6 +45,37 @@ class TargetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Target
         fields = ["id", "key", "title", "name", "district", "number", "location"]
+
+
+class CampaignAudioRecordingSerializer(serializers.ModelSerializer):
+    file_url = serializers.SerializerMethodField()
+    selected = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AudioRecording
+        fields = [
+            "id",
+            "key",
+            "version",
+            "description",
+            "text_to_speech",
+            "hidden",
+            "file_url",
+            "selected",
+        ]
+
+    def get_file_url(self, obj):
+        return obj.file_url()
+
+    def get_selected(self, obj):
+        campaign = self.context.get("campaign")
+        if not campaign:
+            return False
+        return CampaignAudioRecording.objects.filter(
+            campaign=campaign,
+            recording=obj,
+            selected=True,
+        ).exists()
 
 
 class CampaignDetailSerializer(serializers.ModelSerializer):
@@ -254,6 +288,8 @@ class CampaignDetailSerializer(serializers.ModelSerializer):
             if sync_schedule:
                 sync_campaign.schedule = sync_schedule
             sync_campaign.save()
+            if sync_campaign.has_schedule():
+                sync_campaign.start(sync_campaign.schedule)
         else:
             sync_campaign = SyncCampaign.objects.filter(campaign=campaign).first()
             if sync_campaign:
@@ -262,6 +298,16 @@ class CampaignDetailSerializer(serializers.ModelSerializer):
                 if sync_schedule:
                     sync_campaign.schedule = sync_schedule
                 sync_campaign.save()
+                sync_campaign.stop()
+
+    def _sync_campaign_status_side_effects(self, campaign):
+        if campaign.status_code == 2:
+            for schedule_call in ScheduleCall.objects.filter(campaign=campaign, subscribed=True).order_by("id"):
+                schedule_call.start_job()
+            return
+
+        for schedule_call in ScheduleCall.objects.filter(campaign=campaign, subscribed=True).order_by("id"):
+            schedule_call.stop_job()
 
     @transaction.atomic
     def create(self, validated_data):
@@ -276,6 +322,7 @@ class CampaignDetailSerializer(serializers.ModelSerializer):
         self._sync_phone_numbers(campaign, phone_number_ids)
         self._sync_targets(campaign, target_ids)
         self._sync_crm_settings(campaign, crm_sync, crm_id, crm_key, sync_schedule)
+        self._sync_campaign_status_side_effects(campaign)
         return campaign
 
     @transaction.atomic
@@ -296,4 +343,5 @@ class CampaignDetailSerializer(serializers.ModelSerializer):
         self._sync_targets(instance, target_ids)
         if crm_sync is not None:
             self._sync_crm_settings(instance, crm_sync, crm_id, crm_key, sync_schedule)
+        self._sync_campaign_status_side_effects(instance)
         return instance

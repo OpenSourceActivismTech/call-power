@@ -1,9 +1,9 @@
 import hashlib
 import random
-from datetime import timedelta
 from urllib.parse import urlencode
 
 import phonenumbers
+import pystache
 from django.conf import settings
 from django.db import transaction
 from django.http import HttpResponse, JsonResponse
@@ -14,7 +14,7 @@ from django.views.decorators.http import require_http_methods
 from twilio.rest import Client
 from twilio.twiml.voice_response import Dial, Gather, VoiceResponse
 
-from callpower.apps.core.models import Call, Campaign, Session, Target
+from callpower.apps.core.models import Call, Campaign, ScheduleCall, Session, Target
 from callpower.apps.political_data.lookup import locate_targets, validate_location
 from callpower.apps.political_data.services import ensure_target_from_key
 
@@ -104,9 +104,31 @@ def campaign_language(campaign):
     return value if value in TWILIO_TTS_LANGUAGES else "en-US"
 
 
-def speak(response, message, *, lang="en-US", **kwargs):
-    rendered = message.format(**kwargs) if kwargs else message
-    response.say(rendered, voice="alice", language=lang)
+def play_or_say(response, audio, *, lang="en-US", **kwargs):
+    if not audio:
+        response.say("Error: no recording defined", voice="alice", language=lang)
+        return
+
+    if hasattr(audio, "text_to_speech") and audio.text_to_speech:
+        message = pystache.render(audio.text_to_speech, kwargs)
+        response.say(message, voice="alice", language=lang)
+        return
+
+    if hasattr(audio, "file_url"):
+        file_url = audio.file_url()
+        if file_url:
+            response.play(file_url)
+            return
+
+    if isinstance(audio, str):
+        try:
+            rendered = pystache.render(audio, kwargs)
+        except Exception:
+            rendered = audio
+        response.say(rendered, voice="alice", language=lang)
+        return
+
+    response.say("Error: unsupported audio type", voice="alice", language=lang)
 
 
 def parse_params(request, inbound=False):
@@ -166,27 +188,31 @@ def resolve_targets(params, campaign):
 
 def intro_wait_human(request, params, campaign):
     resp = VoiceResponse()
-    speak(resp, "Welcome to {name}.", name=campaign.name, lang=campaign_language(campaign))
+    play_or_say(resp, campaign.audio("msg_intro"), lang=campaign_language(campaign), name=campaign.name)
     action = build_url(request, "call-make-calls", twilio_params(params))
     gather = Gather(num_digits=1, timeout=10, method="POST", action=action)
-    speak(gather, "Press star to get started.", lang=campaign_language(campaign))
+    play_or_say(gather, campaign.audio("msg_intro_confirm"), lang=campaign_language(campaign))
     resp.append(gather)
-    speak(resp, "Goodbye.", lang=campaign_language(campaign))
+    gather_fallback = Gather(num_digits=1, timeout=10, method="POST", action=action)
+    play_or_say(gather_fallback, "Press the star key to get started.", lang="en-US")
+    resp.append(gather_fallback)
+    play_or_say(resp, campaign.audio("msg_goodbye"), lang=campaign_language(campaign))
     return twiml_response(resp)
 
 
 def intro_location_gather(request, params, campaign):
     resp = VoiceResponse()
-    speak(resp, f"Welcome to {campaign.name}.", lang=campaign_language(campaign))
+    audio = campaign.audio("msg_intro_location") or campaign.audio("msg_intro")
+    play_or_say(resp, audio, lang=campaign_language(campaign), organization="")
     return location_gather(request, resp, params, campaign)
 
 
 def location_gather(request, resp, params, campaign):
     action = build_url(request, "call-location-parse", twilio_params(params))
     gather = Gather(num_digits=5, timeout=10, method="POST", action=action)
-    speak(gather, "Please enter your zip code.", lang=campaign_language(campaign))
+    play_or_say(gather, campaign.audio("msg_location"), lang=campaign_language(campaign))
     resp.append(gather)
-    speak(resp, "We could not understand that location.", lang=campaign_language(campaign))
+    play_or_say(resp, campaign.audio("msg_unparsed_location"), lang=campaign_language(campaign))
     return twiml_response(resp)
 
 
@@ -205,6 +231,48 @@ def twilio_params(params):
     if target_ids:
         data["targetIds"] = target_ids
     return data
+
+
+def schedule_call_for_user(campaign, phone, *, location=None, schedule_time=None, country_code="US"):
+    normalized_phone = normalize_phone(phone, country_code)
+    schedule_call, _created = ScheduleCall.objects.get_or_create(
+        campaign=campaign,
+        phone_number=normalized_phone,
+    )
+    schedule_call.time_to_call = schedule_time or timezone.now().time().replace(second=0, microsecond=0)
+    schedule_call.start_job(location=location)
+    return schedule_call
+
+
+def delete_schedule_call_for_user(campaign, phone, country_code="US"):
+    normalized_phone = normalize_phone(phone, country_code)
+    schedule_call = ScheduleCall.objects.filter(campaign=campaign, phone_number=normalized_phone).first()
+    if not schedule_call:
+        return None
+    schedule_call.stop_job()
+    return schedule_call
+
+
+def schedule_prompt(request, params, campaign):
+    resp = VoiceResponse()
+    action = build_url(request, "call-schedule-parse", twilio_params(params))
+    gather = Gather(num_digits=1, timeout=3, method="POST", action=action)
+
+    normalized_phone = normalize_phone(params["user_phone"], params["user_country"])
+    existing_schedule = ScheduleCall.objects.filter(
+        campaign=campaign,
+        phone_number=normalized_phone,
+        subscribed=True,
+    ).first()
+    if existing_schedule:
+        play_or_say(gather, campaign.audio("msg_alter_schedule"), lang=campaign_language(campaign))
+    else:
+        play_or_say(gather, campaign.audio("msg_prompt_schedule"), lang=campaign_language(campaign))
+
+    resp.append(gather)
+    redirect_params = twilio_params({**params, "schedule_skip": 1})
+    resp.redirect(build_url(request, "call-make-calls", redirect_params))
+    return twiml_response(resp)
 
 
 def session_from_params(params):
@@ -293,7 +361,7 @@ def incoming(request):
 
     if campaign.status_code == 0:
         resp = VoiceResponse()
-        speak(resp, "This campaign is complete.", lang=campaign_language(campaign))
+        play_or_say(resp, campaign.audio("msg_campaign_complete"), lang=campaign_language(campaign))
         return twiml_response(resp)
 
     params["user_phone"] = request_data(request).get("From")
@@ -339,12 +407,12 @@ def location_parse(request):
     location = request_data(request).get("Digits", "")[:5]
     if not location:
         resp = VoiceResponse()
-        speak(resp, "We could not understand that location.", lang=campaign_language(campaign))
+        play_or_say(resp, campaign.audio("msg_unparsed_location"), lang=campaign_language(campaign))
         return location_gather(request, resp, params, campaign)
 
     if not validate_location(location, campaign):
         resp = VoiceResponse()
-        speak(resp, "We could not understand that location.", lang=campaign_language(campaign))
+        play_or_say(resp, campaign.audio("msg_invalid_location"), lang=campaign_language(campaign), location=location)
         return location_gather(request, resp, params, campaign)
 
     params["user_location"] = location
@@ -365,6 +433,9 @@ def make_calls(request):
     except ValueError as exc:
         return json_error(str(exc))
 
+    if campaign.prompt_schedule and not params.get("schedule_skip"):
+        return schedule_prompt(request, params, campaign)
+
     targets = resolve_targets(params, campaign)
     if campaign.call_maximum:
         targets = targets[: campaign.call_maximum]
@@ -372,16 +443,21 @@ def make_calls(request):
 
     resp = VoiceResponse()
     if not params["target_ids"]:
-        speak(resp, "We could not find any targets for this campaign.", lang=campaign_language(campaign))
+        play_or_say(
+            resp,
+            campaign.audio("msg_invalid_location"),
+            lang=campaign_language(campaign),
+            location=params.get("user_location", ""),
+        )
         resp.hangup()
         return twiml_response(resp)
 
-    speak(
+    play_or_say(
         resp,
-        "We will connect you to {count} target{suffix}.",
-        count=len(params["target_ids"]),
-        suffix="" if len(params["target_ids"]) == 1 else "s",
+        campaign.audio("msg_call_block_intro"),
         lang=campaign_language(campaign),
+        n_targets=len(params["target_ids"]),
+        many=len(params["target_ids"]) > 1,
     )
     redirect_params = twilio_params(params)
     redirect_params["call_index"] = 0
@@ -401,25 +477,28 @@ def make_single(request):
     targets = resolve_targets(params, campaign)
     if call_index >= len(targets):
         resp = VoiceResponse()
-        speak(resp, "Thank you for calling.", lang=campaign_language(campaign))
+        play_or_say(resp, campaign.audio("msg_final_thanks"), lang=campaign_language(campaign))
         return twiml_response(resp)
 
     target = targets[call_index]
     if not target.number:
         resp = VoiceResponse()
-        speak(resp, "This target does not have a callable number.", lang=campaign_language(campaign))
+        play_or_say(resp, campaign.audio("msg_invalid_location"), lang=campaign_language(campaign))
         redirect_params = twilio_params(params)
         redirect_params["call_index"] = call_index + 1
         resp.redirect(build_url(request, "call-make-single", redirect_params))
         return twiml_response(resp)
 
     resp = VoiceResponse()
-    speak(
+    play_or_say(
         resp,
-        "Connecting you to {title} {name}.",
+        campaign.audio("msg_target_intro"),
+        lang=campaign_language(campaign),
         title=target.title or "",
         name=target.name,
-        lang=campaign_language(campaign),
+        location=target.location or "capitol",
+        office_type="main",
+        district=target.district or "",
     )
     user_phone = normalize_phone(params["user_phone"], params["user_country"])
     dial = Dial(
@@ -435,6 +514,38 @@ def make_single(request):
     )
     dial.number(target.number)
     resp.append(dial)
+    return twiml_response(resp)
+
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def schedule_parse(request):
+    try:
+        params, campaign = parse_params(request)
+    except ValueError as exc:
+        return json_error(str(exc))
+
+    resp = VoiceResponse()
+    schedule_choice = request_data(request).get("Digits", "")
+
+    if schedule_choice == "1":
+        play_or_say(resp, campaign.audio("msg_schedule_start"), lang=campaign_language(campaign))
+        schedule_call_for_user(
+            campaign,
+            params["user_phone"],
+            location=params.get("user_location"),
+            country_code=params["user_country"],
+        )
+    elif schedule_choice == "9":
+        play_or_say(resp, campaign.audio("msg_schedule_stop"), lang=campaign_language(campaign))
+        delete_schedule_call_for_user(
+            campaign,
+            params["user_phone"],
+            country_code=params["user_country"],
+        )
+
+    redirect_params = twilio_params({**params, "schedule_skip": 1})
+    resp.redirect(build_url(request, "call-make-calls", redirect_params))
     return twiml_response(resp)
 
 
@@ -465,9 +576,14 @@ def complete(request):
 
     resp = VoiceResponse()
     if call_index == len(targets) - 1:
-        speak(resp, "Thank you for calling.", lang=campaign_language(campaign))
+        play_or_say(resp, campaign.audio("msg_final_thanks"), lang=campaign_language(campaign))
     else:
-        speak(resp, "Next call.", lang=campaign_language(campaign))
+        play_or_say(
+            resp,
+            campaign.audio("msg_between_calls"),
+            lang=campaign_language(campaign),
+            calls_left=len(targets) - call_index - 1,
+        )
         redirect_params = twilio_params(params)
         redirect_params["call_index"] = call_index + 1
         resp.redirect(build_url(request, "call-make-single", redirect_params))

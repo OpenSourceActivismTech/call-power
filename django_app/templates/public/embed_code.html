@@ -1,0 +1,21 @@
+{% load static %}
+{% if campaign.embed.type == 'iframe' %}
+<style>iframe{width:100%}</style>
+<iframe src="{{ base_url }}{% url 'campaign-embed-iframe' campaign.id %}" frameBorder="0" scrolling="no" id="CallPowerFrame"></iframe>
+<script src="{{ base_url }}{% static 'embed/iframeResizer.min.js' %}"></script>
+<script type="text/javascript">iFrameResize({checkOrigin: false}, '#CallPowerFrame');</script>
+{% elif campaign.embed.type == 'custom' %}
+<script type="text/javascript">
+window.CallPowerOptions = {
+  form: "{{ campaign.embed.form_sel|default:'#call_form' }}",
+  phoneField: "{{ campaign.embed.phone_sel|default:'#phone_id' }}",
+  locationField: "{{ campaign.embed.location_sel|default:'#location_id' }}",
+  scriptDisplay: "{{ campaign.embed.script_display|default:'overlay' }}",
+  {% if campaign.embed.phone_display %}phoneDisplay: "{{ campaign.embed.phone_display }}",{% endif %}
+  {% if campaign.embed.custom_css %}customCSS: "{{ campaign.embed.custom_css }}",{% endif %}
+  {% if campaign.embed.custom_js %}customJS: {{ campaign.embed.custom_js|safe }},{% endif %}
+  {% if campaign.embed.custom_onload %}customOnload: {{ campaign.embed.custom_onload|safe }},{% endif %}
+};
+</script>
+<script type="text/javascript" src="{{ base_url }}{% url 'campaign-embed-js' campaign.id %}"></script>
+{% endif %}

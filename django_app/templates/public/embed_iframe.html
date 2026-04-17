@@ -1,0 +1,71 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="{{ base_url }}{% static 'embed/bootstrap.custom.min.css' %}" type="text/css" />
+    <link rel="stylesheet" href="{{ base_url }}{% static 'embed/overlay.css' %}" type="text/css" />
+  </head>
+  <body>
+    <div class="container-fluid">
+      <form id="call_form" class="form-horizontal">
+        <div class="form-group has-feedback">
+          <label class="control-label col-xs-3 col-sm-1" for="phone">Phone:</label>
+          <div class="col-xs-9 col-sm-2">
+            <input type="tel" class="form-control" name="phone" id="phone_id" />
+            <span class="glyphicon form-control-feedback" aria-hidden="true"></span>
+          </div>
+        </div>
+
+        {% if campaign.segment_by == 'location' %}
+        <div class="form-group has-feedback">
+          <label class="control-label col-xs-3 col-sm-1" for="location">Zipcode:</label>
+          <div class="col-xs-9 col-sm-2">
+            <input type="text" class="form-control" name="location" id="location_id" />
+            <span class="glyphicon form-control-feedback" aria-hidden="true"></span>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+          <div class="col-xs-9 col-xs-offset-3 col-sm-2 col-sm-offset-1">
+            <input type="submit" class="btn btn-default" value="Call Now" />
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <script src="{{ base_url }}{% static 'embed/iframeResizer.contentWindow.min.js' %}"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <script type="text/javascript">
+      window.CallPowerOptions = {
+        form: jQuery("#call_form"),
+        phoneField: jQuery("#phone_id"),
+        {% if campaign.segment_by == 'location' %}locationField: jQuery("#location_id"),{% endif %}
+        scriptDisplay: "replace",
+        {% if campaign.embed.custom_css %}customCSS: "{{ campaign.embed.custom_css }}",{% endif %}
+        onError: function(element, message) {
+          element.parents(".form-group").addClass("has-error");
+          element.next(".form-control-feedback").addClass("glyphicon-remove");
+          return false;
+        },
+        cleanPhone: function() {
+          var isValid = this.getPhone();
+          if (isValid) {
+            this.phoneField.parents(".form-group").removeClass("has-error").addClass("has-success");
+            this.phoneField.next(".form-control-feedback").removeClass("glyphicon-remove").addClass("glyphicon-ok");
+          }
+        },
+        cleanLocation: function() {
+          var isValid = this.getLocation();
+          if (isValid && this.locationField) {
+            this.locationField.parents(".form-group").removeClass("has-error").addClass("has-success");
+            this.locationField.next(".form-control-feedback").removeClass("glyphicon-remove").addClass("glyphicon-ok");
+          }
+        }
+      };
+    </script>
+    <script type="text/javascript" src="{{ base_url }}{% url 'campaign-embed-js' campaign.id %}"></script>
+  </body>
+</html>

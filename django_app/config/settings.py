@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import dj_database_url
+import yaml
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -10,6 +11,10 @@ REPO_DIR = BASE_DIR.parent
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "call-power-django-dev-secret")
 DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
 ALLOWED_HOSTS = [host for host in os.environ.get("DJANGO_ALLOWED_HOSTS", "*").split(",") if host]
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -21,8 +26,10 @@ INSTALLED_APPS = [
     "rest_framework",
     "callpower.apps.core",
     "callpower.apps.api",
+    "callpower.apps.auth",
     "callpower.apps.calls",
     "callpower.apps.political_data",
+    "callpower.apps.public",
 ]
 
 MIDDLEWARE = [
@@ -72,10 +79,13 @@ LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
+LOGIN_URL = "/user/login/"
 
 STATIC_URL = "/static/"
-STATICFILES_DIRS = [BASE_DIR / "static"]
+STATICFILES_DIRS = [BASE_DIR / "static", REPO_DIR / "call_server" / "static"]
 STATIC_ROOT = REPO_DIR / "staticfiles"
+MEDIA_URL = "/media/"
+MEDIA_ROOT = REPO_DIR / "instance" / "uploads"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -85,13 +95,58 @@ REST_FRAMEWORK = {
     ],
 }
 
+AUTHENTICATION_BACKENDS = [
+    "callpower.auth_backends.LegacyUserBackend",
+]
+
 REACT_DEV_SERVER_URL = os.environ.get("REACT_DEV_SERVER_URL", "http://localhost:5173")
+INSTALLED_ORG = os.environ.get("INSTALLED_ORG", "OpenSourceActivism.tech")
+SITENAME = os.environ.get("SITENAME", "Call Power")
+SENTRY_DSN_PUBLIC_KEY = os.environ.get("SENTRY_DSN_PUBLIC_KEY", "")
 
 TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN")
 TWILIO_TIME_LIMIT = int(os.environ.get("TWILIO_TIME_LIMIT", 60 * 60))
 TWILIO_TIMEOUT = int(os.environ.get("TWILIO_TIMEOUT", 60))
 LOG_PHONE_NUMBERS = os.environ.get("LOG_PHONE_NUMBERS", "true").lower() in {"1", "true", "yes", "on"}
+
+CRM_INTEGRATION = os.environ.get("CRM_INTEGRATION", "")
+CRM_DEBUG_PHONE = os.environ.get("CRM_DEBUG_PHONE", "+15555550199")
+ACTIONKIT_DOMAIN = os.environ.get("ACTIONKIT_DOMAIN")
+ACTIONKIT_USER = os.environ.get("ACTIONKIT_USER")
+ACTIONKIT_PASSWORD = os.environ.get("ACTIONKIT_PASSWORD")
+ACTIONKIT_API_KEY = os.environ.get("ACTIONKIT_API_KEY")
+ROGUE_DOMAIN = os.environ.get("ROGUE_DOMAIN")
+ROGUE_API_KEY = os.environ.get("ROGUE_API_KEY")
+MOBILE_COMMONS_USERNAME = os.environ.get("MOBILE_COMMONS_USERNAME")
+MOBILE_COMMONS_PASSWORD = os.environ.get("MOBILE_COMMONS_PASSWORD")
+MOBILE_COMMONS_COMPANY = os.environ.get("MOBILE_COMMONS_COMPANY")
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend" if DEBUG else "django.core.mail.backends.smtp.EmailBackend",
+)
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "localhost")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", 25))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "0") == "1"
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", f"no-reply@{INSTALLED_ORG.lower()}")
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", DEFAULT_FROM_EMAIL)
+
+CAMPAIGN_MESSAGE_DEFAULTS = yaml.safe_load((REPO_DIR / "instance" / "campaign_msg_defaults.yaml").read_text())
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {
+            "location": MEDIA_ROOT,
+            "base_url": MEDIA_URL,
+        },
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
 
 CACHES = {
     "default": {

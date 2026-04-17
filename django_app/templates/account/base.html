@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}{{ sitename }}{% endblock %}</title>
+    <style>
+      :root {
+        --canvas: #f5f1e8;
+        --paper: #fffdf7;
+        --ink: #162024;
+        --muted: #6d746d;
+        --accent: #bb3e03;
+        --accent-soft: #ffe3cc;
+        --line: #d9d0c2;
+        --success: #1f7a46;
+        --warning: #9a6700;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Georgia, "Iowan Old Style", serif;
+        background:
+          radial-gradient(circle at top left, rgba(187, 62, 3, 0.08), transparent 28rem),
+          linear-gradient(180deg, #fbf6ee 0%, var(--canvas) 100%);
+        color: var(--ink);
+      }
+      a { color: var(--accent); }
+      .shell {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 2rem 1.25rem 4rem;
+      }
+      .masthead {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: center;
+        margin-bottom: 2rem;
+      }
+      .masthead h1 {
+        margin: 0;
+        font-size: clamp(2rem, 4vw, 3.5rem);
+      }
+      .eyebrow {
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-size: 0.72rem;
+        color: var(--muted);
+      }
+      .nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        justify-content: flex-end;
+      }
+      .nav a, .nav button {
+        border: 1px solid var(--line);
+        background: rgba(255,255,255,0.75);
+        color: var(--ink);
+        border-radius: 999px;
+        padding: 0.65rem 1rem;
+        text-decoration: none;
+        cursor: pointer;
+        font: inherit;
+      }
+      .panel {
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: 1.4rem;
+        padding: 1.5rem;
+        box-shadow: 0 16px 48px rgba(22, 32, 36, 0.08);
+      }
+      .panel + .panel { margin-top: 1.25rem; }
+      .messages { display: grid; gap: 0.75rem; margin-bottom: 1rem; }
+      .message {
+        border-radius: 1rem;
+        padding: 0.9rem 1rem;
+        border: 1px solid var(--line);
+        background: #fff;
+      }
+      .message.success { border-color: rgba(31, 122, 70, 0.25); background: rgba(31, 122, 70, 0.08); }
+      .message.warning { border-color: rgba(154, 103, 0, 0.25); background: rgba(154, 103, 0, 0.08); }
+      .message.error { border-color: rgba(187, 62, 3, 0.25); background: rgba(187, 62, 3, 0.08); }
+      form { display: grid; gap: 1rem; }
+      .field { display: grid; gap: 0.35rem; }
+      .field label { font-weight: 700; }
+      .field input, .field select, .field textarea {
+        width: 100%;
+        padding: 0.82rem 0.95rem;
+        border-radius: 0.9rem;
+        border: 1px solid var(--line);
+        background: #fff;
+        font: inherit;
+      }
+      .help { color: var(--muted); font-size: 0.92rem; margin: 0; }
+      .errors { color: var(--accent); font-size: 0.92rem; margin: 0; }
+      .actions {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .button, button[type="submit"] {
+        border: none;
+        background: var(--accent);
+        color: white;
+        padding: 0.82rem 1.15rem;
+        border-radius: 999px;
+        font: inherit;
+        cursor: pointer;
+      }
+      .button-secondary {
+        background: transparent;
+        border: 1px solid var(--line);
+        color: var(--ink);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+      }
+      th, td {
+        text-align: left;
+        border-bottom: 1px solid var(--line);
+        padding: 0.8rem 0.5rem;
+        vertical-align: top;
+      }
+      .stack { display: grid; gap: 1rem; }
+      .muted { color: var(--muted); }
+      .danger { color: var(--accent); }
+      @media (max-width: 720px) {
+        .masthead { flex-direction: column; align-items: flex-start; }
+        .nav { justify-content: flex-start; }
+        table, thead, tbody, tr, th, td { display: block; }
+        thead { display: none; }
+        td { padding-left: 0; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="masthead">
+        <div>
+          <div class="eyebrow">Django account workflows</div>
+          <h1>{{ sitename }}</h1>
+        </div>
+        <nav class="nav">
+          <a href="/">Public Site</a>
+          {% if legacy_user %}
+            <a href="/admin/">Admin App</a>
+            <a href="{% url 'user-profile' %}">Profile</a>
+            {% if legacy_user.is_admin %}
+              <a href="{% url 'user-index' %}">Manage Users</a>
+            {% endif %}
+            <form action="{% url 'user-logout' %}" method="post" style="display:inline;">
+              {% csrf_token %}
+              <button type="submit">Log out</button>
+            </form>
+          {% else %}
+            <a href="{% url 'user-login' %}">Log in</a>
+          {% endif %}
+        </nav>
+      </header>
+
+      {% if messages %}
+        <section class="messages">
+          {% for message in messages %}
+            <div class="message {{ message.tags|default:'info' }}">{{ message }}</div>
+          {% endfor %}
+        </section>
+      {% endif %}
+
+      {% block content %}{% endblock %}
+    </div>
+  </body>
+</html>

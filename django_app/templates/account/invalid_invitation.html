@@ -1,0 +1,9 @@
+{% extends "account/base.html" %}
+{% block title %}Invalid Invitation | {{ sitename }}{% endblock %}
+{% block content %}
+  <section class="panel" style="max-width: 42rem;">
+    <div class="eyebrow">Invitation</div>
+    <h2>Error: Invalid Invitation Key</h2>
+    <p>Please check your email, or contact <a href="mailto:{{ admin_email }}?subject={{ sitename }} Account Invitation">your administrator</a>.</p>
+  </section>
+{% endblock %}
