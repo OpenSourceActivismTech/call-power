@@ -1,9 +1,10 @@
 import os
 from pathlib import Path
-
-import dj_database_url
 import yaml
+import dj_database_url
 
+from dotenv import load_dotenv
+load_dotenv()  # Explicitly load the .env file
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 REPO_DIR = BASE_DIR.parent
@@ -15,6 +16,7 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
+USE_NGROK = os.environ.get("USE_NGROK", "False") == "True" and os.environ.get("RUN_MAIN", None) != "true"
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -105,6 +107,8 @@ SITENAME = os.environ.get("SITENAME", "Call Power")
 SENTRY_DSN_PUBLIC_KEY = os.environ.get("SENTRY_DSN_PUBLIC_KEY", "")
 
 TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID")
+if not TWILIO_ACCOUNT_SID:
+    print("Warning: TWILIO_ACCOUNT_SID not set, Twilio integration will not work")
 TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN")
 TWILIO_TIME_LIMIT = int(os.environ.get("TWILIO_TIME_LIMIT", 60 * 60))
 TWILIO_TIMEOUT = int(os.environ.get("TWILIO_TIMEOUT", 60))

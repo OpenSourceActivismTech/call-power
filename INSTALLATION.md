@@ -24,7 +24,7 @@ To lookup individual representatives, you need:
 
 To test Twilio functionality in development, you will need your server to have a web-routable address. 
 
-* Twilio provides [ngrok](https://ngrok.com) to do this for free. When using the debug server you can use `flask run --host=SERVERID.ngrok.com` to set SERVER_NAME and STORE_DOMAIN
+* Twilio provides [ngrok](https://ngrok.com) to do this for free. When using the debug server you can use `USE_NGROK=TRUE; python manage.py runserver`
 * To test text-to-speech playback in the browser, you will need to create a [TwiML app](https://www.twilio.com/user/account/apps) with the Voice request URL http://YOUR_HOSTNAME/api/twilio/text-to-speech. Place the resulting application SID in your environment as TWILIO_PLAYBACK_APP
 
 For production, you will also need to set:
