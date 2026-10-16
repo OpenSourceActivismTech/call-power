@@ -287,7 +287,7 @@ def context_processors(app):
 
     # json filter
     app.jinja_env.filters['json'] = json_markup
-    app.jinja_env.add_extension('call_server.jinja.SelectiveHTMLCompress')
+    #app.jinja_env.add_extension('call_server.jinja.SelectiveHTMLCompress')
 
     # cleanup template whitespace
     app.jinja_env.trim_blocks = True
