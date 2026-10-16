@@ -131,6 +131,8 @@ Heroku names some environment variables differently, particularly for the databa
 
 You will also need to provision the Heroku Postgres and Heroku Redis addons for database and caching,. You can start with the Hobby tiers which are free to test, but for production use you'll want to upgrade to Standard. You will probably also want to add Sendgrid to send user invite and password resset emails; this can likely remain at the Starter level.
 
+If you get REDIS errors when loading political data, you may need to append `?ssl_cert_reqs=none` to the REDIS_URL provided in Heroku settings.
+
 Docker setup
 ------------------
 A Dockerfile is included for building a container environment suitable for both development and production. To begin, copy `docker-compose.yml.example` to `docker-compose.yml` and fill in the appropriate values. Consult [the first part of this guide](#configure-settings) to learn what the required variables are.
