@@ -1,5 +1,5 @@
 -r common.txt
 boto==2.49.0
-psycopg2==2.8.6
+psycopg2==2.9.7
 redis==3.5.3
 gunicorn==19.9.0
