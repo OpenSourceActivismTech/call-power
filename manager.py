@@ -2,12 +2,6 @@ import os
 import sys
 from datetime import datetime
 
-# monkey patch collections.Iterable to avoid issue with flask-store
-import collections
-import collections.abc
-collections.Iterable = collections.abc.Iterable
-collections.Mapping = collections.abc.Mapping
-
 import click
 import alembic
 import alembic.config, alembic.command
