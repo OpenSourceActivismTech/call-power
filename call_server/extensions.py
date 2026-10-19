@@ -24,7 +24,6 @@ mail = Mail()
 from flask_login import LoginManager
 login_manager = LoginManager()
 
-import flask_restless_ng as flask_restless
 from flask_restless import APIManager
 rest = APIManager()
 
