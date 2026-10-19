@@ -3,6 +3,7 @@ from flask import current_app, flash
 
 import itertools
 import json
+import phonenumbers
 import pytz
 import unicodedata
 import yaml
@@ -175,7 +176,15 @@ class OrderedDictYAMLLoader(yaml.Loader):
         return mapping
 
 class CustomJSONProvider(DefaultJSONProvider):
+    def dumps(self, obj, **kwargs):
+        # Handle single PhoneNumber objects
+        if isinstance(obj, phonenumbers.PhoneNumber):
+            return super().dumps(phonenumbers.format_number(obj, phonenumbers.PhoneNumberFormat.E164), **kwargs)
+        return super().dumps(obj, **kwargs)
+    
     def default(self, obj):
         if isinstance(obj, (datetime.datetime, datetime.date)):
             return obj.isoformat()
+        if isinstance(obj, phonenumbers.PhoneNumber):
+            return phonenumbers.format_number(obj, phonenumbers.PhoneNumberFormat.E164)
         return super().default(obj)
