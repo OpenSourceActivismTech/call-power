@@ -11,12 +11,12 @@ import yaml.constructor
 from collections import OrderedDict
 from datetime import datetime
 
-from flask import Markup
+from flask.json.provider import DefaultJSONProvider
+from markupsafe import Markup
 import sqlalchemy
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.exc import IntegrityError
-from werkzeug import FileStorage
-
+from werkzeug.datastructures import FileStorage
 
 # near copy of django's get_or_create, modified from http://stackoverflow.com/a/21146492/264790
 def get_one_or_create(session,
@@ -173,3 +173,9 @@ class OrderedDictYAMLLoader(yaml.Loader):
             value = self.construct_object(value_node, deep=deep)
             mapping[key] = value
         return mapping
+
+class CustomJSONProvider(DefaultJSONProvider):
+    def default(self, obj):
+        if isinstance(obj, (datetime.datetime, datetime.date)):
+            return obj.isoformat()
+        return super().default(obj)

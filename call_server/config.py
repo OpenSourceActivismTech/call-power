@@ -107,7 +107,7 @@ class ProductionConfig(DefaultConfig):
     ADMIN_API_KEY = os.environ.get('ADMIN_API_KEY', None)
     PREFERRED_URL_SCHEME = 'https'
 
-    CACHE_TYPE = 'redis'
+    CACHE_TYPE = 'RedisCache'
     CACHE_REDIS_URL = os.environ.get('REDIS_URL')
     CACHE_KEY_PREFIX = 'call-power:'
     RQ_REDIS_URL = os.environ.get('REDIS_URL')
@@ -136,14 +136,25 @@ class HerokuConfig(ProductionConfig):
     ENVIRONMENT = "Production"
 
     # db via heroku postgres
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
+    # Rewrite the prefix if it uses the deprecated scheme
+    database_url = os.environ.get('DATABASE_URL')
+    if database_url and database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+    SQLALCHEMY_DATABASE_URI = database_url
     SQLALCHEMY_POOL_RECYCLE = 500
 
     # cache via heroku-redis
-    CACHE_TYPE = 'redis'
-    CACHE_REDIS_URL = os.environ.get('REDIS_URL')
+    CACHE_TYPE = 'RedisCache'
+    redis_url = os.environ.get('REDIS_URL')
+    # Rewrite the prefix if it uses the insecure scheme
+    if redis_url and redis_url.startswith("redis://"):
+        redis_url = redis_url.replace("redis://", "rediss://", 1)
+    # append ssl_cert_reqs=none
+    if redis_url and not redis_url.endswith("?ssl_cert_reqs=none"):
+        redis_url = redis_url + "?ssl_cert_reqs=none"
+    CACHE_REDIS_URL = redis_url
     CACHE_KEY_PREFIX = 'call-power:'
-    CACHE_OPTIONS = {'ssl':True, 'ssl_cert_reqs': CERT_NONE}
+    CACHE_OPTIONS = {'ssl_cert_reqs': CERT_NONE}
     # heroku uses self-signed certificates for redis, so don't try to validate them
 
     # smtp via sendgrid
@@ -164,7 +175,7 @@ class DevelopmentConfig(DefaultConfig):
     DEBUG_MORE = True
     TESTING = False
 
-    CACHE_TYPE = 'redis'
+    CACHE_TYPE = 'RedisCache'
     CACHE_REDIS_URL = 'redis://localhost:6379'
     CACHE_KEY_PREFIX = 'call-power:'
 

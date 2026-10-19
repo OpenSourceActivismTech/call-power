@@ -32,6 +32,10 @@ csrf = CSRFProtect()
 
 from flask_cors import CORS as cors
 
+# monkey patch flask_store
+import werkzeug
+from werkzeug.local import LocalProxy
+werkzeug.LocalProxy = LocalProxy
 from flask_store import Store
 store = Store()
 

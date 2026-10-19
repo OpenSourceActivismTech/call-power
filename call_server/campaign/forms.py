@@ -2,15 +2,15 @@ import magic
 from flask_wtf import FlaskForm
 from flask_babel import gettext as _
 
-from wtforms import (HiddenField, SubmitField, TextField,
+from wtforms import (HiddenField, SubmitField, StringField,
                      SelectField, SelectMultipleField,
                      BooleanField, RadioField,
                      FileField, FieldList, FormField)
-from wtforms.ext.sqlalchemy.fields import QuerySelectField, QuerySelectMultipleField
-from wtforms_components import IntegerField, read_only
 from wtforms_alchemy import PhoneNumberField
-from wtforms.widgets import TextArea, Input
-from wtforms.validators import Required, Optional, AnyOf, NumberRange, ValidationError, Length
+from wtforms_components import IntegerField, read_only
+from wtforms_sqlalchemy.fields import QuerySelectMultipleField
+from wtforms.widgets import TextArea
+from wtforms.validators import Optional, AnyOf, NumberRange, ValidationError, Length, DataRequired
 from wtforms_alchemy.validators import Unique
 
 from .constants import (SEGMENT_BY_CHOICES, LOCATION_CHOICES, INCLUDE_SPECIAL_CHOCIES, TARGET_OFFICE_CHOICES, LANGUAGE_CHOICES,
@@ -30,31 +30,31 @@ class DisabledSelectField(SelectField):
 
 
 class CountryTypeForm(FlaskForm):
-    campaign_country = SelectField(_('Country'), validators=[Required()])
-    campaign_type = SelectField(_('Type'), validators=[Required()])
-    campaign_language = SelectField(_('Language'), [Required()], choices=LANGUAGE_CHOICES)
+    campaign_country = SelectField(_('Country'), validators=[DataRequired()])
+    campaign_type = SelectField(_('Type'), validators=[DataRequired()])
+    campaign_language = SelectField(_('Language'), [DataRequired()], choices=LANGUAGE_CHOICES)
     submit = SubmitField(_('Next'))
 
 
 class TargetForm(FlaskForm):
     order = IntegerField(_('Order'),)
-    title = TextField(_('Title'), [Optional()])
-    name = TextField(_('Name'), [Required()])
-    number = PhoneNumberField(_('Phone Number'), [Required()])
-    location = TextField(_('Location'), [Optional()])
-    key = TextField(_('Unique Key'), [Optional()])
+    title = StringField(_('Title'), [Optional()])
+    name = StringField(_('Name'), [DataRequired()])
+    number = PhoneNumberField(_('Phone Number'), [DataRequired()])
+    location = StringField(_('Location'), [Optional()])
+    key = StringField(_('Unique Key'), [Optional()])
 
 
 class CampaignForm(FlaskForm):
     next = HiddenField()
-    name = TextField(_('Campaign Name'), [Required(), Length(max=LONG_STRING_LEN), Unique(Campaign.name, message="Campaign with that name already exists")])
+    name = StringField(_('Campaign Name'), [DataRequired(), Length(max=LONG_STRING_LEN), Unique(Campaign.name, message="Campaign with that name already exists")])
     campaign_country = DisabledSelectField(_('Country'), [Optional()], choices=COUNTRY_CHOICES)
     campaign_type = DisabledSelectField(_('Type'), [Optional()])
     campaign_state = SelectField(_('State'), [Optional()])
     campaign_subtype = SelectField(_('Subtype'), [Optional()])
     # nested_type passed to data-field in template, but starts empty
 
-    segment_by = RadioField(_('Segment By'), [Required()], choices=choice_items(SEGMENT_BY_CHOICES),
+    segment_by = RadioField(_('Segment By'), [DataRequired()], choices=choice_items(SEGMENT_BY_CHOICES),
                             description=True, default=SEGMENT_BY_CHOICES[0][0])
     locate_by = RadioField(_('Locate By'), [Optional()], choices=choice_items(LOCATION_CHOICES),
                            description=True, default=None)
@@ -72,7 +72,7 @@ class CampaignForm(FlaskForm):
 
     phone_number_set = QuerySelectMultipleField(_('Select Phone Numbers'),
                                                 query_factory=TwilioPhoneNumber.available_numbers,
-                                                description=True, validators=[Required()])
+                                                description=True, validators=[DataRequired()])
     allow_call_in = BooleanField(_('Allow Call In'))
     allow_intl_calls = BooleanField(_('Allow International Calls'))
     prompt_schedule = BooleanField(_('Prompt to Schedule Recurring Calls'))
@@ -108,33 +108,33 @@ class CampaignForm(FlaskForm):
 
 class CampaignAudioForm(FlaskForm):
     next = HiddenField()
-    msg_intro = TextField(_('Introduction'))
-    msg_intro_confirm = TextField(_('Start Confirmation'))
-    msg_location = TextField(_('Location Prompt'))
-    msg_intro_location = TextField(_('Introduction with Location'))
-    msg_invalid_location = TextField(_('Invalid Location'))
-    msg_unparsed_location = TextField(_('Unparsed Location'))
-    msg_choose_target = TextField(_('Choose Target'))
-    msg_prompt_schedule = TextField(_('Prompt to Schedule'))
-    msg_alter_schedule = TextField(_('Alter Existing Schedule'))
-    msg_schedule_start = TextField(_('Schedule Started'))
-    msg_schedule_stop = TextField(_('Schedule Stopped'))
-    msg_call_block_intro = TextField(_('Call Block Introduction'))
-    msg_target_intro = TextField(_('Target Introduction'))
-    msg_target_busy = TextField(_('Target Busy'))
-    msg_between_calls = TextField(_('Between Calls'))
-    msg_final_thanks = TextField(_('Final Thanks'))
-    msg_campaign_complete = TextField(_('Campaign Complete'))
+    msg_intro = StringField(_('Introduction'))
+    msg_intro_confirm = StringField(_('Start Confirmation'))
+    msg_location = StringField(_('Location Prompt'))
+    msg_intro_location = StringField(_('Introduction with Location'))
+    msg_invalid_location = StringField(_('Invalid Location'))
+    msg_unparsed_location = StringField(_('Unparsed Location'))
+    msg_choose_target = StringField(_('Choose Target'))
+    msg_prompt_schedule = StringField(_('Prompt to Schedule'))
+    msg_alter_schedule = StringField(_('Alter Existing Schedule'))
+    msg_schedule_start = StringField(_('Schedule Started'))
+    msg_schedule_stop = StringField(_('Schedule Stopped'))
+    msg_call_block_intro = StringField(_('Call Block Introduction'))
+    msg_target_intro = StringField(_('Target Introduction'))
+    msg_target_busy = StringField(_('Target Busy'))
+    msg_between_calls = StringField(_('Between Calls'))
+    msg_final_thanks = StringField(_('Final Thanks'))
+    msg_campaign_complete = StringField(_('Campaign Complete'))
 
     submit = SubmitField(_('Save and Test'))
 
 
 class AudioRecordingForm(FlaskForm):
-    key = TextField(_('Key'), [Required()])
+    key = StringField(_('Key'), [DataRequired()])
     file_storage = FileField(_('File'), [Optional()])
-    file_type = TextField(_('Type'), [Optional()])
+    file_type = StringField(_('Type'), [Optional()])
     text_to_speech = FileField(_('Text to Speech'), [Optional()])
-    description = TextField(_('Description'), [Optional()])
+    description = StringField(_('Description'), [Optional()])
 
     def validate_file_storage(form, field):
         if not field.data:
@@ -152,32 +152,32 @@ class AudioRecordingForm(FlaskForm):
 class CampaignLaunchForm(FlaskForm):
     next = HiddenField()
 
-    test_call_number = TextField(_('Call Me'))
-    test_call_location = TextField(_('Test Location'))
+    test_call_number = StringField(_('Call Me'))
+    test_call_location = StringField(_('Test Location'))
     test_call_country = SelectField(_('Country'), [Optional()], choices=COUNTRY_CHOICES+[('', "Other")])
 
     # standard embed fields
-    embed_script = TextField(_('Display Script'), widget=TextArea(), description=True)
-    embed_code = TextField(_('Embed Code'), widget=TextArea(), description=True)
+    embed_script = StringField(_('Display Script'), widget=TextArea(), description=True)
+    embed_code = StringField(_('Embed Code'), widget=TextArea(), description=True)
     embed_type = SelectField(_('Form Embed'), [Optional()], choices=choice_items(EMBED_FORM_CHOICES),
         description=True, default=EMBED_FORM_CHOICES[0][0])
 
     # custom embed fields
-    embed_form_sel = TextField(_('Form Selector'))
-    embed_phone_sel = TextField(_('Phone Field'))
-    embed_location_sel = TextField(_('Location Field'))
-    embed_custom_css = TextField(_('Custom CSS URL'))
+    embed_form_sel = StringField(_('Form Selector'))
+    embed_phone_sel = StringField(_('Phone Field'))
+    embed_location_sel = StringField(_('Location Field'))
+    embed_custom_css = StringField(_('Custom CSS URL'))
     embed_script_display = SelectField(_('Script Display'), [Optional()], choices=choice_items(EMBED_SCRIPT_DISPLAY),
         description=True, default=EMBED_SCRIPT_DISPLAY[0][0])
-    embed_phone_display = TextField(_('Phone Display'), description=True)
-    embed_redirect = TextField(_('Redirect URL'), description=True)
-    embed_custom_js = TextField(_('Custom JS Success'), description=True)
-    embed_custom_onload = TextField(_('Custom JS Onload'), widget=TextArea(), description=True)
+    embed_phone_display = StringField(_('Phone Display'), description=True)
+    embed_redirect = StringField(_('Redirect URL'), description=True)
+    embed_custom_js = StringField(_('Custom JS Success'), description=True)
+    embed_custom_onload = StringField(_('Custom JS Onload'), widget=TextArea(), description=True)
 
     # CRM sync fields
     crm_sync = BooleanField(_('Sync calls to CRM'), [Optional()], default=False, description=True)
-    crm_id = TextField(_('CRM Campaign ID'), description=True)
-    crm_key = TextField(_('CRM Campaign Key'), description=True)
+    crm_id = StringField(_('CRM Campaign ID'), description=True)
+    crm_key = StringField(_('CRM Campaign Key'), description=True)
     sync_schedule = SelectField(_('Schedule'), choices=choice_items(SCHEDULE_CHOICES), default=SCHEDULE_HOURLY)
 
     submit = SubmitField(_('Launch'))

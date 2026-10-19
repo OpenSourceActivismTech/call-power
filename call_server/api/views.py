@@ -36,24 +36,24 @@ restless_preprocessors = {'GET_SINGLE':   [restless_api_auth],
 
 def configure_restless(app):
     rest.create_api(Call, collection_name='call', methods=['GET'],
-                    include_columns=['id', 'timestamp', 'campaign_id', 'target_id',
+                    only=['id', 'timestamp', 'campaign_id', 'target_id',
                                     'call_id', 'status', 'duration'],
-                    include_methods=['target_display'])
+                    additional_attributes=['target_display'])
     rest.create_api(ScheduleCall, collection_name='schedule', methods=['GET'],
-                    include_columns=['id', 'created_at', 'subscribed',
+                    only=['id', 'created_at', 'subscribed',
                                     'campaign_id', 'time_to_call', 'last_called', 'num_calls'],
-                    include_methods=['user_phone'])
+                    additional_attributes=['user_phone'])
     rest.create_api(Campaign, collection_name='campaign', methods=['GET'],
-                    include_columns=['id', 'name', 'campaign_type', 'campaign_state', 'campaign_subtype',
+                    only=['id', 'name', 'campaign_type', 'campaign_state', 'campaign_subtype',
                                      'target_ordering', 'allow_call_in', 'call_maximum', 'embed'],
-                    include_methods=['phone_numbers', 'targets', 'status', 'audio_msgs', 'required_fields'])
+                    additional_attributes=['phone_numbers', 'targets', 'status', 'audio_msgs', 'required_fields'])
     rest.create_api(Target, collection_name='target', methods=['GET'],
-                    include_columns=['id', 'uid', 'name', 'title'],
-                    include_methods=['phone_number'])
+                    only=['id', 'uid', 'name', 'title'],
+                    additional_attributes=['phone_number'])
     rest.create_api(AudioRecording, collection_name='audiorecording', methods=['GET'],
-                    include_columns=['id', 'key', 'version', 'description',
+                    only=['id', 'key', 'version', 'description',
                                      'text_to_speech', 'hidden'],
-                    include_methods=['file_url', 'campaign_names', 'campaign_ids',
+                    additional_attributes=['file_url', 'campaign_names', 'campaign_ids',
                                      'selected_campaign_names', 'selected_campaign_ids'])
 
 
