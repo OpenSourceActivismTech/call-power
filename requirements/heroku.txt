@@ -1,3 +1,2 @@
 -r production.txt
-newrelic==4.16.0.116
-sentry-sdk==1.2.0
+sentry-sdk==2.72.0
