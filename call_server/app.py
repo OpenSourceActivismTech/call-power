@@ -155,16 +155,15 @@ def init_extensions(app):
 
     # stable list of admin phone numbers, cached in memory to avoid db hit for each call
     # disable in testing
-    if app.config.get('TESTING', False):
-        app.ADMIN_PHONES_LIST = []
-    else:
-        try:
+    app.ADMIN_PHONES_LIST = []
+    try:
+        with app.app_context():
             app.ADMIN_PHONES_LIST = filter(bool, 
                 [str(u.phone.national_number) if u.phone else None for u in User.query.all()]
             )
-        except (sqlalchemy.exc.SQLAlchemyError, RuntimeError):
-            # this may throw an error when creating the database from scratch
-            pass
+    except (sqlalchemy.exc.SQLAlchemyError, RuntimeError):
+        # this may throw an error when creating the database from scratch
+        pass
 
     if app.config.get('DEBUG'):
         from flask_debugtoolbar import DebugToolbarExtension
