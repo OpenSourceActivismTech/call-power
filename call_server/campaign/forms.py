@@ -6,10 +6,10 @@ from wtforms import (HiddenField, SubmitField, StringField,
                      SelectField, SelectMultipleField,
                      BooleanField, RadioField,
                      FileField, FieldList, FormField)
-from wtforms.ext.sqlalchemy.fields import QuerySelectField, QuerySelectMultipleField
-from wtforms_components import IntegerField, read_only
 from wtforms_alchemy import PhoneNumberField
-from wtforms.widgets import TextArea, Input
+from wtforms_components import IntegerField, read_only
+from wtforms_sqlalchemy.fields import QuerySelectMultipleField
+from wtforms.widgets import TextArea
 from wtforms.validators import Required, Optional, AnyOf, NumberRange, ValidationError, Length
 from wtforms_alchemy.validators import Unique
 
