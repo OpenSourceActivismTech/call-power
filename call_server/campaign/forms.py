@@ -10,7 +10,7 @@ from wtforms_alchemy import PhoneNumberField
 from wtforms_components import IntegerField, read_only
 from wtforms_sqlalchemy.fields import QuerySelectMultipleField
 from wtforms.widgets import TextArea
-from wtforms.validators import Required, Optional, AnyOf, NumberRange, ValidationError, Length
+from wtforms.validators import Optional, AnyOf, NumberRange, ValidationError, Length, DataRequired
 from wtforms_alchemy.validators import Unique
 
 from .constants import (SEGMENT_BY_CHOICES, LOCATION_CHOICES, INCLUDE_SPECIAL_CHOCIES, TARGET_OFFICE_CHOICES, LANGUAGE_CHOICES,
@@ -30,31 +30,31 @@ class DisabledSelectField(SelectField):
 
 
 class CountryTypeForm(FlaskForm):
-    campaign_country = SelectField(_('Country'), validators=[Required()])
-    campaign_type = SelectField(_('Type'), validators=[Required()])
-    campaign_language = SelectField(_('Language'), [Required()], choices=LANGUAGE_CHOICES)
+    campaign_country = SelectField(_('Country'), validators=[DataRequired()])
+    campaign_type = SelectField(_('Type'), validators=[DataRequired()])
+    campaign_language = SelectField(_('Language'), [DataRequired()], choices=LANGUAGE_CHOICES)
     submit = SubmitField(_('Next'))
 
 
 class TargetForm(FlaskForm):
     order = IntegerField(_('Order'),)
     title = StringField(_('Title'), [Optional()])
-    name = StringField(_('Name'), [Required()])
-    number = PhoneNumberField(_('Phone Number'), [Required()])
+    name = StringField(_('Name'), [DataRequired()])
+    number = PhoneNumberField(_('Phone Number'), [DataRequired()])
     location = StringField(_('Location'), [Optional()])
     key = StringField(_('Unique Key'), [Optional()])
 
 
 class CampaignForm(FlaskForm):
     next = HiddenField()
-    name = StringField(_('Campaign Name'), [Required(), Length(max=LONG_STRING_LEN), Unique(Campaign.name, message="Campaign with that name already exists")])
+    name = StringField(_('Campaign Name'), [DataRequired(), Length(max=LONG_STRING_LEN), Unique(Campaign.name, message="Campaign with that name already exists")])
     campaign_country = DisabledSelectField(_('Country'), [Optional()], choices=COUNTRY_CHOICES)
     campaign_type = DisabledSelectField(_('Type'), [Optional()])
     campaign_state = SelectField(_('State'), [Optional()])
     campaign_subtype = SelectField(_('Subtype'), [Optional()])
     # nested_type passed to data-field in template, but starts empty
 
-    segment_by = RadioField(_('Segment By'), [Required()], choices=choice_items(SEGMENT_BY_CHOICES),
+    segment_by = RadioField(_('Segment By'), [DataRequired()], choices=choice_items(SEGMENT_BY_CHOICES),
                             description=True, default=SEGMENT_BY_CHOICES[0][0])
     locate_by = RadioField(_('Locate By'), [Optional()], choices=choice_items(LOCATION_CHOICES),
                            description=True, default=None)
@@ -72,7 +72,7 @@ class CampaignForm(FlaskForm):
 
     phone_number_set = QuerySelectMultipleField(_('Select Phone Numbers'),
                                                 query_factory=TwilioPhoneNumber.available_numbers,
-                                                description=True, validators=[Required()])
+                                                description=True, validators=[DataRequired()])
     allow_call_in = BooleanField(_('Allow Call In'))
     allow_intl_calls = BooleanField(_('Allow International Calls'))
     prompt_schedule = BooleanField(_('Prompt to Schedule Recurring Calls'))
@@ -130,7 +130,7 @@ class CampaignAudioForm(FlaskForm):
 
 
 class AudioRecordingForm(FlaskForm):
-    key = StringField(_('Key'), [Required()])
+    key = StringField(_('Key'), [DataRequired()])
     file_storage = FileField(_('File'), [Optional()])
     file_type = StringField(_('Type'), [Optional()])
     text_to_speech = FileField(_('Text to Speech'), [Optional()])
