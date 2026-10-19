@@ -16,7 +16,7 @@ class Campaign(db.Model):
     __tablename__ = 'campaign_campaign'
 
     id = db.Column(db.Integer, primary_key=True)
-    created_time = db.Column(db.DateTime, default=datetime.utcnow)
+    created_time = db.Column(db.DateTime, default=datetime.now)
 
     name = db.Column(db.String(LONG_STRING_LEN), nullable=False, unique=True)
     country_code = db.Column(db.String(STRING_LEN), index=True)
@@ -29,8 +29,7 @@ class Campaign(db.Model):
     locate_by = db.Column(db.String(STRING_LEN))
     include_special = db.Column(db.String(STRING_LEN))
     target_set = db.relationship('Target', secondary='campaign_target_sets',
-                                 order_by='campaign_target_sets.c.order',
-                                 backref=db.backref('campaigns'))
+                                 order_by='campaign_target_sets.c.order')
     target_ordering = db.Column(db.String(STRING_LEN))
     target_shuffle_chamber = db.Column(db.Boolean, default=True)
     target_offices = db.Column(db.String(STRING_LEN))
@@ -38,11 +37,9 @@ class Campaign(db.Model):
     allow_call_in = db.Column(db.Boolean, default=False)
     allow_intl_calls = db.Column(db.Boolean, default=False)
     
-    phone_number_set = db.relationship('TwilioPhoneNumber', secondary='campaign_phone_numbers',
-                                       backref=db.backref('campaigns'))
+    phone_number_set = db.relationship('TwilioPhoneNumber', secondary='campaign_phone_numbers')
     prompt_schedule = db.Column(db.Boolean, default=False)
-    audio_recordings = db.relationship('AudioRecording', secondary='campaign_audio_recordings',
-                                       backref=db.backref('campaigns'))
+    audio_recordings = db.relationship('AudioRecording', secondary='campaign_audio_recordings')
 
     status_code = db.Column(db.SmallInteger, default=STATUS_PAUSED)
 
@@ -202,8 +199,8 @@ class CampaignTarget(db.Model):
     target_id = db.Column(db.Integer, db.ForeignKey('campaign_target.id'))
     order = db.Column(db.Integer())
 
-    campaign = db.relationship('Campaign', backref='campaign_targets', lazy='joined')
-    target = db.relationship('Target', backref='campaign_targets', lazy='joined')
+    campaign = db.relationship('Campaign', lazy='joined')
+    target = db.relationship('Target', lazy='joined')
 
 
 class CampaignPhoneNumber(db.Model):

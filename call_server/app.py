@@ -92,16 +92,16 @@ def create_app(configuration=None, app_name=None, blueprints=None):
         app.logger.error('Flask-store is not configured, you may not be able to serve audio recordings')
 
     # then extension specific configurations
-    configure_babel(app)
-    configure_login(app)
-    configure_assets(app)
-    configure_restless(app)
+    with app.app_context():
+        configure_login(app)
+        configure_assets(app)
+        configure_restless(app)
 
-    # finally instance specific configurations
-    context_processors(app)
-    instance_defaults(app)
+        # finally instance specific configurations
+        context_processors(app)
+        instance_defaults(app)
 
-    app.logger.info('Call Power started')
+        app.logger.info('Call Power started')
     return app
 
 
@@ -162,7 +162,7 @@ def init_extensions(app):
             app.ADMIN_PHONES_LIST = filter(bool, 
                 [str(u.phone.national_number) if u.phone else None for u in User.query.all()]
             )
-        except sqlalchemy.exc.SQLAlchemyError:
+        except (sqlalchemy.exc.SQLAlchemyError, RuntimeError):
             # this may throw an error when creating the database from scratch
             pass
 
@@ -176,33 +176,6 @@ def register_blueprints(app, blueprints):
     for blueprint in blueprints:
         app.register_blueprint(blueprint)
 
-
-def configure_babel(app):
-    if babel.locale_selector_func:
-        # don't redefine babel when testing or migrating
-        return True
-
-    @babel.localeselector
-    def get_locale():
-        # TODO, first check user config?
-        g.accept_languages = app.config.get('ACCEPT_LANGUAGES')
-        accept_languages = g.accept_languages.keys()
-        browser_default = request.accept_languages.best_match(accept_languages)
-        if 'language' in session:
-            language = session['language']
-            # current_app.logger.debug('lang from session: %s' % language)
-            if language not in accept_languages:
-                # clear it
-                # current_app.logger.debug('invalid %s, clearing' % language)
-                session['language'] = None
-                language = browser_default
-        else:
-            language = browser_default
-            # current_app.logger.debug('lang from browser: %s' % language)
-        session['language'] = language  # save it to session
-
-        # and to user model?
-        return language
 
 
 def configure_login(app):

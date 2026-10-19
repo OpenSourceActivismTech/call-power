@@ -107,7 +107,7 @@ class ProductionConfig(DefaultConfig):
     ADMIN_API_KEY = os.environ.get('ADMIN_API_KEY', None)
     PREFERRED_URL_SCHEME = 'https'
 
-    CACHE_TYPE = 'redis'
+    CACHE_TYPE = 'RedisCache'
     CACHE_REDIS_URL = os.environ.get('REDIS_URL')
     CACHE_KEY_PREFIX = 'call-power:'
     RQ_REDIS_URL = os.environ.get('REDIS_URL')
@@ -140,7 +140,7 @@ class HerokuConfig(ProductionConfig):
     SQLALCHEMY_POOL_RECYCLE = 500
 
     # cache via heroku-redis
-    CACHE_TYPE = 'redis'
+    CACHE_TYPE = 'RedisCache'
     CACHE_REDIS_URL = os.environ.get('REDIS_URL')
     CACHE_KEY_PREFIX = 'call-power:'
     CACHE_OPTIONS = {'ssl':True, 'ssl_cert_reqs': CERT_NONE}
@@ -164,7 +164,7 @@ class DevelopmentConfig(DefaultConfig):
     DEBUG_MORE = True
     TESTING = False
 
-    CACHE_TYPE = 'redis'
+    CACHE_TYPE = 'RedisCache'
     CACHE_REDIS_URL = 'redis://localhost:6379'
     CACHE_KEY_PREFIX = 'call-power:'
 

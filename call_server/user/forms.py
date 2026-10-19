@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from flask import Markup
+from markupsafe import Markup
 
 from flask_wtf import FlaskForm
 from flask_babel import gettext as _

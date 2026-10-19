@@ -25,13 +25,17 @@ from flask_login import LoginManager
 login_manager = LoginManager()
 
 from flask_restless import APIManager
-rest = APIManager(flask_sqlalchemy_db=db)
+rest = APIManager(session=db.session)
 
 from flask_wtf.csrf import CSRFProtect
 csrf = CSRFProtect()
 
 from flask_cors import CORS as cors
 
+# monkey patch flask_store
+import werkzeug
+from werkzeug.local import LocalProxy
+werkzeug.LocalProxy = LocalProxy
 from flask_store import Store
 store = Store()
 
