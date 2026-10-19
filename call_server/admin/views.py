@@ -133,7 +133,7 @@ def blocklist(blocklist_id=None):
 
     form = BlocklistForm()
     
-    if form.validate_on_submit():
+    if form.is_submitted() and form.validate():
         form.populate_obj(blocklist)
 
         db.session.add(blocklist)

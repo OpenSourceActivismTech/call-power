@@ -76,7 +76,7 @@ def country_type(campaign_id=None):
 
     form.campaign_type.choices = choice_items(all_valid_choices)  # accepts all valid choices, but updates dynamically in view
 
-    if form.validate_on_submit():
+    if form.is_submitted() and form.validate():
         country_code = form.campaign_country.data
         campaign_type = form.campaign_type.data
         campaign_language = form.campaign_language.data
@@ -144,7 +144,7 @@ def form(country_code=None, campaign_type=None, campaign_id=None, campaign_langu
         form.show_special.data = True
 
     form._obj = campaign # needed for uniqueness validator
-    if form.validate_on_submit():
+    if form.is_submitted() and form.validate():
         # can't use populate_obj with nested forms, iterate over fields manually
         for field in form:
             if field.name not in ['target_set', 'campaign_country', 'campaign_type']:
@@ -274,7 +274,7 @@ def audio(campaign_id):
         if not is_default_message:
             field.data = campaign_audio
 
-    if form.validate_on_submit():
+    if form.is_submitted() and form.validate():
         form.populate_obj(campaign)
 
         db.session.add(campaign)
@@ -294,7 +294,7 @@ def upload_recording(campaign_id):
     campaign = Campaign.query.filter_by(id=campaign_id).first_or_404()
     form = AudioRecordingForm()
 
-    if form.validate_on_submit():
+    if form.is_submitted() and form.validate():
         message_key = form.data.get('key')
 
         # get highest version for this key to date
@@ -420,7 +420,7 @@ def launch(campaign_id):
     campaign = Campaign.query.filter_by(id=campaign_id).first_or_404()
     form = CampaignLaunchForm(obj=campaign)
 
-    if form.validate_on_submit():
+    if form.is_submitted() and form.validate():
         campaign.status_code = STATUS_LIVE
 
         # update campaign embed settings
@@ -528,7 +528,7 @@ def status(campaign_id):
     campaign = Campaign.query.filter_by(id=campaign_id).first_or_404()
     form = CampaignStatusForm(obj=campaign)
 
-    if form.validate_on_submit():
+    if form.is_submitted() and form.validate():
         form.populate_obj(campaign)        
         db.session.add(campaign)
         db.session.commit()

@@ -34,7 +34,7 @@ def login():
     form = LoginForm(login=request.args.get('login', None),
                      next=request.args.get('next', None))
 
-    if form.validate_on_submit():
+    if form.is_submitted() and form.validate():
         user, authenticated = User.authenticate(form.login.data,
                                                 form.password.data)
 
@@ -139,7 +139,7 @@ def change_password():
 
     form = ChangePasswordForm(email=user.email, activation_key=user.activation_key)
 
-    if form.validate_on_submit():
+    if form.is_submitted() and form.validate():
         user.password = form.password.data
         user.activation_key = None
         db.session.add(user)
@@ -157,7 +157,7 @@ def change_password():
 def reset_password():
     form = RecoverPasswordForm()
 
-    if form.validate_on_submit():
+    if form.is_submitted() and form.validate():
         flash(_('If that address is associated with an account you\'ll receive a password reset email shortly.'), 'error')
 
         user = User.query.filter_by(email=form.email.data).first()
@@ -194,7 +194,7 @@ def profile(user_id):
     form = UserForm(obj=user,
                     next=request.args.get('next'))
 
-    if form.validate_on_submit():
+    if form.is_submitted() and form.validate():
         user.email = form.email.data
         user.name = form.name.data
         user.phone = form.phone.data
@@ -213,7 +213,7 @@ def profile(user_id):
 def invite():
     form = InviteUserForm()
 
-    if form.validate_on_submit():
+    if form.is_submitted() and form.validate():
         user = User()
         form.populate_obj(user)
 
@@ -249,7 +249,7 @@ def role(user_id):
     user = User.query.filter_by(id=user_id).first_or_404()
     form = UserRoleForm(obj=user, next=request.args.get('next'))
 
-    if form.validate_on_submit():
+    if form.is_submitted() and form.validate():
         if ((user == current_user)
         and (user.role_code is USER_ADMIN)
         and (int(form.data['role_code']) > 0)):
@@ -278,7 +278,7 @@ def remove(user_id):
 
     form = RemoveUserForm(obj=user, username=user.name)
 
-    if form.validate_on_submit():
+    if form.is_submitted() and form.validate():
         db.session.delete(user)
         db.session.commit()
 
