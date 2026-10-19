@@ -1,0 +1,17 @@
+{% extends "account/base.html" %}
+{% block title %}Sign in | {{ sitename }}{% endblock %}
+{% block content %}
+  <section class="panel" style="max-width: 38rem;">
+    <div class="eyebrow">Account</div>
+    <h2>Sign in</h2>
+    <p class="muted">Use your existing Call Power username or email and password.</p>
+    <form method="post">
+      {% csrf_token %}
+      {% include "account/_form_fields.html" %}
+      <div class="actions">
+        <button type="submit">Sign in</button>
+        <a class="button button-secondary" href="{% url 'user-reset-password' %}">Forgot your password?</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "account/base.html" %}
+{% block title %}Invite User | {{ sitename }}{% endblock %}
+{% block content %}
+  <section class="panel" style="max-width: 42rem;">
+    <div class="eyebrow">Admin</div>
+    <h2>Invite User</h2>
+    <p class="muted">This sends a create-account link through Django’s mail backend.</p>
+    <form method="post">
+      {% csrf_token %}
+      {% include "account/_form_fields.html" %}
+      <button type="submit">Send instructions</button>
+    </form>
+  </section>
+{% endblock %}

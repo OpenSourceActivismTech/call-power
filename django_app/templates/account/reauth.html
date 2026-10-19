@@ -1,0 +1,14 @@
+{% extends "account/base.html" %}
+{% block title %}Reauthenticate | {{ sitename }}{% endblock %}
+{% block content %}
+  <section class="panel" style="max-width: 38rem;">
+    <div class="eyebrow">Security</div>
+    <h2>Reauthenticate</h2>
+    <p class="muted">Confirm your password before changing sensitive account details.</p>
+    <form method="post">
+      {% csrf_token %}
+      {% include "account/_form_fields.html" %}
+      <button type="submit">Reauthenticate</button>
+    </form>
+  </section>
+{% endblock %}

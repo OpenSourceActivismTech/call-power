@@ -1,12 +1,12 @@
 import logging
+from types import SimpleNamespace
 
 from tests.run import BaseTestCase
-import pytest
+from tests.run import slow_test
 
-from call_server.political_data.lookup import locate_targets
-from call_server.political_data.countries.ca import CADataProvider
-from call_server.political_data.geocode import Location
-from call_server.campaign.models import Campaign
+from callpower.apps.political_data.lookup import locate_targets
+from callpower.apps.political_data.providers.ca import CADataProvider
+from callpower.apps.political_data.geocode import Location
 
 
 class TestCAData(BaseTestCase):
@@ -18,22 +18,24 @@ class TestCAData(BaseTestCase):
 
         cls.mock_cache = {}  # mock flask-cache outside of application context
         cls.ca_data = CADataProvider(cls.mock_cache)
-        # cls.ca_data.load_data()
 
     def setUp(self, **kwargs):
         super(TestCAData, self).setUp(**kwargs)
 
-        self.PARLIAMENT_CAMPAIGN = Campaign(
+        self.PARLIAMENT_CAMPAIGN = SimpleNamespace(
             country_code='ca',
             campaign_type='parliament',
             campaign_subtype='lower',
             target_ordering='in-order',
+            segment_by='location',
             locate_by='address')
-        self.PROVINCE_CAMPAIGN = Campaign(
+        self.PROVINCE_CAMPAIGN = SimpleNamespace(
             country_code='ca',
             campaign_type='province',
             campaign_state='QC',
             campaign_subtype='lower',
+            target_ordering='in-order',
+            segment_by='location',
             locate_by='address')
 
         # well, really montreal
@@ -44,13 +46,13 @@ class TestCAData(BaseTestCase):
         self.assertIsNotNone(self.mock_cache)
         self.assertIsNotNone(self.ca_data)
 
-    @pytest.mark.slow
+    @slow_test
     def test_postcodes(self):
-        riding = self.ca_data.get_postcode('L5G4L3')
+        riding = self.ca_data.get_location('postal', 'L5G4L3')
         self.assertEqual(riding['province'], 'ON')
         self.assertEqual(riding['city'], 'Mississauga')
 
-    @pytest.mark.slow
+    @slow_test
     def test_locate_targets(self):
         keys = locate_targets(self.mock_location, self.PARLIAMENT_CAMPAIGN, cache=self.mock_cache)
         # returns a list of target boundary keys
@@ -60,7 +62,7 @@ class TestCAData(BaseTestCase):
         self.assertEqual(mp['elected_office'], 'MP')
         self.assertEqual(mp['representative_set_name'], 'House of Commons')
 
-    @pytest.mark.slow
+    @slow_test
     def test_locate_targets_province_quebec(self):
         keys = locate_targets(self.mock_location, self.PROVINCE_CAMPAIGN, cache=self.mock_cache)
         self.assertEqual(len(keys), 1)

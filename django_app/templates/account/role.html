@@ -1,0 +1,13 @@
+{% extends "account/base.html" %}
+{% block title %}User Role | {{ sitename }}{% endblock %}
+{% block content %}
+  <section class="panel" style="max-width: 42rem;">
+    <div class="eyebrow">Admin</div>
+    <h2>User Role{% if target_user %} for {{ target_user.name }}{% endif %}</h2>
+    <form method="post">
+      {% csrf_token %}
+      {% include "account/_form_fields.html" %}
+      <button type="submit">Save</button>
+    </form>
+  </section>
+{% endblock %}

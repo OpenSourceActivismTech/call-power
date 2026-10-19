@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Call Power</title>
+    <style>
+      :root {
+        color: #152033;
+        background:
+          radial-gradient(circle at top left, rgba(242, 180, 58, 0.22), transparent 26%),
+          linear-gradient(140deg, #f4efe6 0%, #d8e7f4 100%);
+        font-family: "Avenir Next", "Segoe UI", sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+      main {
+        width: min(760px, 100%);
+        background: rgba(255,255,255,0.9);
+        border: 1px solid rgba(21,32,51,0.08);
+        border-radius: 28px;
+        box-shadow: 0 24px 60px rgba(21,32,51,0.12);
+        padding: 36px;
+      }
+      h1 {
+        margin: 0 0 12px;
+        font: 700 2.5rem/1.05 Georgia, serif;
+        letter-spacing: -0.03em;
+      }
+      p { margin: 0; color: #41506a; font-size: 1.05rem; }
+      a { color: #8a4b08; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Connecting people to power through their phones</h1>
+      <p>A project of <a href="https://www.opensourceactivism.tech">OpenSourceActivism.tech</a> and {{ installed_org }}.</p>
+    </main>
+  </body>
+</html>

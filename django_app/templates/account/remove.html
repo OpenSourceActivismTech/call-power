@@ -1,0 +1,14 @@
+{% extends "account/base.html" %}
+{% block title %}Remove User | {{ sitename }}{% endblock %}
+{% block content %}
+  <section class="panel" style="max-width: 42rem;">
+    <div class="eyebrow">Admin</div>
+    <h2>Remove User{% if target_user %} - {{ target_user.name }}{% endif %}</h2>
+    <p class="muted">Type the username exactly to confirm permanent removal.</p>
+    <form method="post">
+      {% csrf_token %}
+      {% include "account/_form_fields.html" %}
+      <button type="submit">Confirm Removal</button>
+    </form>
+  </section>
+{% endblock %}

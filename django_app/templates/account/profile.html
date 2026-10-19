@@ -1,0 +1,18 @@
+{% extends "account/base.html" %}
+{% block title %}Profile | {{ sitename }}{% endblock %}
+{% block content %}
+  <section class="panel" style="max-width: 44rem;">
+    <div class="eyebrow">Profile</div>
+    <h2>Update Profile{% if target_user %} for {{ target_user.name }}{% endif %}</h2>
+    <form method="post">
+      {% csrf_token %}
+      {% include "account/_form_fields.html" %}
+      <div class="actions">
+        <button type="submit">Save</button>
+        {% if legacy_user and legacy_user.id == target_user.id %}
+          <a class="button button-secondary" href="{% url 'user-change-password' %}">Change password</a>
+        {% endif %}
+      </div>
+    </form>
+  </section>
+{% endblock %}

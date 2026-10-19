@@ -1,0 +1,14 @@
+{% extends "account/base.html" %}
+{% block title %}Create Account | {{ sitename }}{% endblock %}
+{% block content %}
+  <section class="panel" style="max-width: 42rem;">
+    <div class="eyebrow">Invitation</div>
+    <h2>Create Account</h2>
+    <p class="muted">Finish your invited account setup to access the new Django admin.</p>
+    <form method="post">
+      {% csrf_token %}
+      {% include "account/_form_fields.html" %}
+      <button type="submit">Save</button>
+    </form>
+  </section>
+{% endblock %}

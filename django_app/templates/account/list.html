@@ -1,0 +1,49 @@
+{% extends "account/base.html" %}
+{% block title %}Manage Users | {{ sitename }}{% endblock %}
+{% block content %}
+  <section class="panel">
+    <div class="actions" style="justify-content: space-between;">
+      <div>
+        <div class="eyebrow">Admin</div>
+        <h2 style="margin:0.25rem 0 0;">Manage Users</h2>
+      </div>
+      <a class="button" href="{% url 'user-invite' %}">Invite +</a>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Role</th>
+          <th>Last Login</th>
+          <th>Status</th>
+          <th>Edit</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+          <tr>
+            <td>{{ user.name }}</td>
+            <td>{{ user.email }}</td>
+            <td>{{ user.phone|default:"" }}</td>
+            <td>{{ user.role }}</td>
+            <td>{% if user.last_accessed %}{{ user.last_accessed|date:"Y-m-d" }}{% else %}Never{% endif %}</td>
+            <td>{{ user.status }}</td>
+            <td>
+              <a href="{% url 'user-profile-id' user.id %}">Profile</a>
+              /
+              <a href="{% url 'user-role' user.id %}">Role</a>
+              {% if legacy_user and legacy_user.is_admin %}
+                /
+                <a class="danger" href="{% url 'user-remove' user.id %}">Remove</a>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7">No users found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}
