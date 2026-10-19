@@ -136,12 +136,20 @@ class HerokuConfig(ProductionConfig):
     ENVIRONMENT = "Production"
 
     # db via heroku postgres
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
+    # Rewrite the prefix if it uses the deprecated scheme
+    database_url = os.environ.get('DATABASE_URL')
+    if database_url and database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+    SQLALCHEMY_DATABASE_URI = database_url
     SQLALCHEMY_POOL_RECYCLE = 500
 
     # cache via heroku-redis
     CACHE_TYPE = 'RedisCache'
-    CACHE_REDIS_URL = os.environ.get('REDIS_URL')
+    redis_url = os.environ.get('REDIS_URL')
+    # Rewrite the prefix if it uses the insecure scheme
+    if redis_url and redis_url.startswith("redis://"):
+        redis_url = redis_url.replace("redis://", "rediss://", 1)
+    CACHE_REDIS_URL = redis_url
     CACHE_KEY_PREFIX = 'call-power:'
     CACHE_OPTIONS = {'ssl':True, 'ssl_cert_reqs': CERT_NONE}
     # heroku uses self-signed certificates for redis, so don't try to validate them
