@@ -10,7 +10,7 @@ from flask import Flask, g, request, session, render_template
 from flask_assets import Bundle
 import sqlalchemy
 
-from .utils import json_markup, OrderedDictYAMLLoader
+from .utils import json_markup, OrderedDictYAMLLoader, CustomJSONProvider
 import yaml
 from datetime import datetime
 
@@ -76,6 +76,7 @@ def create_app(configuration=None, app_name=None, blueprints=None):
 
     configure_logging(app)
     configure_error_pages(app)
+    app.json = CustomJSONProvider(app)
 
     # store production assets
     if app.config.get('STORE_DOMAIN'):

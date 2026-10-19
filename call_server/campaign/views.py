@@ -23,7 +23,6 @@ from ..call.models import Call
 from ..sync.models import SyncCampaign
 from ..sync.constants import SCHEDULE_CHOICES, SCHEDULE_HOURLY
 from ..schedule.models import ScheduleCall
-from ..utils import CustomJSONProvider
 
 
 from .forms import (CountryTypeForm, CampaignForm, CampaignAudioForm,
@@ -134,7 +133,7 @@ def form(country_code=None, campaign_type=None, campaign_id=None, campaign_langu
     for number in TwilioPhoneNumber.available_numbers().filter_by(call_in_allowed=True):
         if campaign.id != number.call_in_campaign.id:
             call_in_map[number.id] = number.call_in_campaign.name
-    form.phone_number_set.render_kw = { "data-call_in_map": CustomJSONProvider().encode(call_in_map) }
+    form.phone_number_set.render_kw = { "data-call_in_map": call_in_map }
 
     # for fields with dynamic choices, set to empty here in view
     # will be updated in client
