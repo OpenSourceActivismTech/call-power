@@ -145,8 +145,7 @@ def init_extensions(app):
     rq.init_app(app)
     app.rq = rq
     store.init_app(app)
-    rest.init_app(app, flask_sqlalchemy_db=db,
-                  preprocessors=restless_preprocessors)
+    rest.init_app(app, preprocessors=restless_preprocessors)
     rest.app = app
 
     limiter.init_app(app)

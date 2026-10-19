@@ -25,7 +25,7 @@ from flask_login import LoginManager
 login_manager = LoginManager()
 
 from flask_restless import APIManager
-rest = APIManager()
+rest = APIManager(session=db.session)
 
 from flask_wtf.csrf import CSRFProtect
 csrf = CSRFProtect()
