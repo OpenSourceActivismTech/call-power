@@ -9,7 +9,7 @@
 
 import os
 
-from werkzeug.contrib.fixers import ProxyFix
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from call_server.app import create_app
 from call_server.extensions import assets
