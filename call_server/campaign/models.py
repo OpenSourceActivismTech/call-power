@@ -199,8 +199,8 @@ class CampaignTarget(db.Model):
     target_id = db.Column(db.Integer, db.ForeignKey('campaign_target.id'))
     order = db.Column(db.Integer())
 
-    campaign = db.relationship('Campaign', lazy='joined')
-    target = db.relationship('Target', lazy='joined')
+    campaign = db.relationship('Campaign', lazy='joined', overlaps='target_set')
+    target = db.relationship('Target', lazy='joined', overlaps='target_set')
 
 
 class CampaignPhoneNumber(db.Model):
@@ -420,6 +420,7 @@ class CampaignAudioRecording(db.Model):
     recording_id = db.Column(db.Integer, db.ForeignKey('campaign_recording.id'))
     selected = db.Column(db.Boolean, default=False)
 
-    campaign = db.relationship('Campaign')
-    recording = db.relationship('AudioRecording', backref=db.backref('campaign_audio_recordings',
-                                                                     lazy='dynamic'))
+    campaign = db.relationship('Campaign', overlaps='audio_recordings')
+    recording = db.relationship('AudioRecording', backref=db.backref(
+        'campaign_audio_recordings', lazy='dynamic', overlaps='audio_recordings'),
+        overlaps='audio_recordings')
