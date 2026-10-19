@@ -149,9 +149,12 @@ class HerokuConfig(ProductionConfig):
     # Rewrite the prefix if it uses the insecure scheme
     if redis_url and redis_url.startswith("redis://"):
         redis_url = redis_url.replace("redis://", "rediss://", 1)
+    # append ssl_cert_reqs=none
+    if redis_url and not redis_url.endswith("?ssl_cert_reqs=none"):
+        redis_url = redis_url + "?ssl_cert_reqs=none"
     CACHE_REDIS_URL = redis_url
     CACHE_KEY_PREFIX = 'call-power:'
-    CACHE_OPTIONS = {'ssl':True, 'ssl_cert_reqs': CERT_NONE}
+    CACHE_OPTIONS = {'ssl_cert_reqs': CERT_NONE}
     # heroku uses self-signed certificates for redis, so don't try to validate them
 
     # smtp via sendgrid
